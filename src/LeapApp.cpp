@@ -88,7 +88,7 @@ public:
         mFont = Font( "YuGothic", 20 );
         
         // カメラ(視点)の設定
-        mCam.setEyePoint( Vec3f( 0.0f, 150.0f, 500.0f ) );//カメラの位置
+        mCam.setEyePoint( Vec3f( 0.0f, 150.0f, 1000.0f ) );//カメラの位置
         mCam.setCenterOfInterestPoint( Vec3f( 0.0f, 0.0f, 1.0f ) );//カメラの中心座標
         mCam.setPerspective( 45.0f, getWindowAspectRatio(), 50.0f, 3000.0f );//カメラから見える視界の設定
         
@@ -271,15 +271,6 @@ public:
     //フォント
     Font mFont;
     
-    //ここ消したらスレッドが止まる！！
-    // Leap Motion
-    Leap::Controller mLeap;//ジェスチャーの有効化など...
-    Leap::Frame mCurrentFrame;//現在
-    Leap::Frame mLastFrame;//最新
-    
-    Leap::Matrix mRotationMatrix;//回転
-    Leap::Vector mTotalMotionTranslation;//移動
-    //ここまで
     
     float mRotateMatrix0;//親指（向かって右足）の回転
     float mRotateMatrix2;//人さし指（向かって右腕）の回転
@@ -287,34 +278,10 @@ public:
     float mRotateMatrix4;//薬指（向かって左腕）の回転
     float mRotateMatrix5;//小指（向かって左足）の回転
     
-    //ジェスチャーのための変数追加
-    Leap::Frame lastFrame;//最後
-    
-    //ジェスチャーを取得するための変数
-    std::list<Leap::Gesture> mGestureList;
-    
-    
-    //各ジェスチャーを使用する
-    std::list<Leap::SwipeGesture> swipe;
-    std::list<Leap::CircleGesture> circle;
-    std::list<Leap::KeyTapGesture> keytap;
-    std::list<Leap::ScreenTapGesture> screentap;
     
     //パラメーター表示する時に使う
     params::InterfaceGl mParams;
-    
-    //ジェスチャーをするときに取得できる変数
-    //スワイプ
-    float mMinLenagth;//長さ
-    float mMinVelocity;//速さ
-    //サークル
-    float mMinRadius;//半径
-    float mMinArc;//弧
-    
-    //キータップ、スクリーンタップ
-    float mMinDownVelocity;//速さ
-    float mHistorySeconds;//秒数
-    float mMinDistance;//距離
+
     
     //マリオネットのための変数
     float mTotalMotionScale = 1.0f;//拡大縮小（顔）
@@ -332,17 +299,8 @@ public:
     float defBodyTransY = -100.0;//体のy座標の位置
     float defBodyTransZ = 50.0;//体のz座標の位置
     float defMouseTransZ = 110.0;//口のz座標の位置
+    ci::Vec3f mTotalMotionTranslation;//移動
     
-    //InteractionBoxの実装
-    Leap::InteractionBox iBox;
-    
-    float mLeft;//左の壁
-    float mRight;//右の壁
-    float mTop;//雲
-    float mBaottom;//底
-    float mBackSide;//背面
-    float mFrontSide;//正面
-
     //メッセージを取得する時に使う
     int messageNumber = -1;
 };
