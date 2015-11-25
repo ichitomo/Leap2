@@ -125,6 +125,7 @@ public:
         gl::setMatrices( mMayaCam.getCamera() );
         drawMarionette();//マリオネット描写
         drawListArea();//メッセージリストの表示
+        //gl::draw(backgroundImage, getWindowBounds());//backgroundImageの描写
         gl::popMatrices();
         // パラメーター設定UIを描画する
         //mParams.draw();
@@ -314,6 +315,7 @@ public:
     //フォント
     Font mFont;
     
+    //ここ消したらスレッドが止まる！！
     // Leap Motion
     Leap::Controller mLeap;//ジェスチャーの有効化など...
     Leap::Frame mCurrentFrame;//現在
@@ -321,7 +323,7 @@ public:
     
     Leap::Matrix mRotationMatrix;//回転
     Leap::Vector mTotalMotionTranslation;//移動
-    
+    //ここまで
     
     float mRotateMatrix0;//親指（向かって右足）の回転
     float mRotateMatrix2;//人さし指（向かって右腕）の回転
@@ -385,12 +387,8 @@ public:
     float mBackSide;//背面
     float mFrontSide;//正面
     
-    //int count = 0;
     //メッセージを取得する時に使う
     int messageNumber = -1;
-    //ソケット通信用変数
-    
-    
 };
 CINDER_APP_NATIVE( LeapApp, RendererGl )
 
