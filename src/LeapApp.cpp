@@ -386,7 +386,7 @@ public:
     float mBaottom;//底
     float mBackSide;//背面
     float mFrontSide;//正面
-    
+    //ddd
     //メッセージを取得する時に使う
     int messageNumber = -1;
 };
