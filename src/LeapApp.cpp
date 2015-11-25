@@ -32,7 +32,6 @@ using namespace cinder::gl;
 
 struct Messages_base{
     char message[40];
-    //int num;
 };
 
 Messages_base messageList[] = {
@@ -102,7 +101,6 @@ public:
         //backgroundImageの読み込み
         backgroundImage = gl::Texture(loadImage(loadResource("../resources/image.jpg")));
         
-        
         // 描画時に奥行きの考慮を有効にする
         gl::enableDepthRead();
         gl::enableDepthWrite();
@@ -120,15 +118,12 @@ public:
     //描写処理
     void *draw(void *p){
         gl::clear();
-        //gl::draw(backgroundImage, getWindowBounds());//backgroundImageの描写
         gl::pushMatrices();// カメラ位置を設定する
-        gl::setMatrices( mMayaCam.getCamera() );
+        //gl::setMatrices( mMayaCam.getCamera() );
         drawMarionette();//マリオネット描写
         drawListArea();//メッセージリストの表示
-        //gl::draw(backgroundImage, getWindowBounds());//backgroundImageの描写
         gl::popMatrices();
         // パラメーター設定UIを描画する
-        //mParams.draw();
         return NULL;
     }
    
@@ -140,21 +135,16 @@ public:
         //頭
         gl::pushMatrices();
         setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defFaceTransX,
-                     mTotalMotionTranslation.y+defFaceTransY,
-                     mTotalMotionTranslation.z+defFaceTransZ );//位置
+        glTranslatef(defFaceTransX,defFaceTransY,defFaceTransZ );//位置
         glRotatef(-mRotateMatrix3, 1.0f, 0.0f, 0.0f);//回転
         glScalef( mTotalMotionScale, mTotalMotionScale, mTotalMotionScale );//大きさ
-        glTranslatef( mTotalMotionTranslation.x/10.0,0.0f,0.0f);//移動
+        glTranslatef(10.0,0.0f,0.0f);//移動
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 80, 100 ) );//実体
         gl::popMatrices();
         
         //右目
         gl::pushMatrices();
-        //setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x-defEyeTransX,
-                     mTotalMotionTranslation.y+defEyeTransY,
-                     mTotalMotionTranslation.z+defEyeTransZ);//位置
+        glTranslatef(defEyeTransX,defEyeTransY,defEyeTransZ);//位置
         glRotatef(rightEyeAngle, 1.0f, 0.0f, 0.0f);//回転
         glScalef( mTotalMotionScale2/5, mTotalMotionScale2/10, mTotalMotionScale2/10 );//大きさ
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
@@ -162,10 +152,7 @@ public:
         
         //左目
         gl::pushMatrices();
-        //setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defEyeTransX,
-                     mTotalMotionTranslation.y+defEyeTransY,
-                     mTotalMotionTranslation.z+defEyeTransZ);//位置
+        glTranslatef(defEyeTransX,defEyeTransY,defEyeTransZ);//位置
         glRotatef(leftEyeAngle, 1.0f, 0.0f, 0.0f);//回転
         glScalef( mTotalMotionScale2/5, mTotalMotionScale2/10, mTotalMotionScale2/10 );//大きさ
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
@@ -178,24 +165,9 @@ public:
         defEyeTransY = 20.0;//右目の角度
         defEyeTransZ = 100.0;//左目の角度
         
-        //口を描く
-        gl::pushMatrices();
-        glPointSize(10);
-        glLineWidth(10);
-        glBegin(GL_LINE_STRIP);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glVertex3d(mTotalMotionTranslation.x-20, mTotalMotionTranslation.y + 0, mTotalMotionTranslation.z +defMouseTransZ);
-        glVertex3d(mTotalMotionTranslation.x + 0, mTotalMotionTranslation.y-30, mTotalMotionTranslation.z +defMouseTransZ);
-        glVertex3d(mTotalMotionTranslation.x + 20, mTotalMotionTranslation.y + 0, mTotalMotionTranslation.z +defMouseTransZ);
-        glEnd();
-        gl::popMatrices();
-        
         //胴体を描く
         gl::pushMatrices();
-        setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defBodyTransX,
-                     mTotalMotionTranslation.y+defBodyTransY,
-                     mTotalMotionTranslation.z+defBodyTransZ);//移動
+        glTranslatef(defBodyTransX,defBodyTransY,defBodyTransZ);//移動
         glScalef( mTotalMotionScale, mTotalMotionScale, mTotalMotionScale );//大きさ
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
         gl::popMatrices();
@@ -203,9 +175,7 @@ public:
         //右腕を描く
         gl::pushMatrices();
         setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defBodyTransX+75,
-                     mTotalMotionTranslation.y+defBodyTransY,
-                     mTotalMotionTranslation.z+defBodyTransZ);//移動
+        glTranslatef(defBodyTransX+75,defBodyTransY,defBodyTransZ);//移動
         glRotatef(mRotateMatrix2, 1.0f, 1.0f, 0.0f);//回転
         glTranslatef( mTotalMotionTranslation.x/10.0,
                      mTotalMotionTranslation.y/10.0,
@@ -216,40 +186,29 @@ public:
         //二個目
         glTranslatef( defBodyTransX+85,0.0f,0.0f);//移動
         glRotatef(mRotateMatrix2, 1.0f, 1.0f, 0.0f);//回転
-        glTranslatef( mTotalMotionTranslation.x/10.0,
-                     mTotalMotionTranslation.y/10.0,
-                     0.0f);//移動
-        // glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
+        glTranslatef(10.0,10.0,0.0f);//移動
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 50,  50, 50 ) );//実体
         gl::popMatrices();
         
         //左腕を描く
         gl::pushMatrices();
         setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defBodyTransX-75,
-                     mTotalMotionTranslation.y+defBodyTransY,
-                     mTotalMotionTranslation.z+defBodyTransZ);//移動
+        glTranslatef(defBodyTransX-75,defBodyTransY,defBodyTransZ);//移動
         glRotatef(-mRotateMatrix4, -1.0f, 1.0f, 0.0f);//回転
-        glTranslatef( -mTotalMotionTranslation.x/10.0,
-                     mTotalMotionTranslation.y/10.0,
-                     0.0f);//移動
+        glTranslatef(10.0,10.0,0.0f);//移動
         glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 50, 50 ) );//実体
         //二個目
         glTranslatef(defBodyTransX-85,0.0f,0.0f);//移動
         glRotatef(-mRotateMatrix4, -1.0f, 1.0f, 0.0f);//回転
-        glTranslatef( -mTotalMotionTranslation.x/10.0,
-                     mTotalMotionTranslation.y/10.0,
-                     0.0f);//移動
+        glTranslatef(10.0,10.0,0.0f);//移動
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 50, 50, 50 ) );//実体
         gl::popMatrices();
         
         //右足を描く
         gl::pushMatrices();
         setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defBodyTransX+25,
-                     mTotalMotionTranslation.y+defBodyTransY-75,
-                     mTotalMotionTranslation.z+defBodyTransZ);//移動
+        glTranslatef(defBodyTransX+25,defBodyTransY-75,defBodyTransZ);//移動
         glRotatef(mRotateMatrix0, 1.0f, 0.0f, 0.0f);//回転
         glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
@@ -258,16 +217,13 @@ public:
         //左足を描く
         gl::pushMatrices();
         setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defBodyTransX-25,
-                     mTotalMotionTranslation.y+defBodyTransY-75,
-                     mTotalMotionTranslation.z+defBodyTransZ);//移動
+        glTranslatef(defBodyTransX-25,defBodyTransY-75,defBodyTransZ);//移動
         glRotatef(mRotateMatrix5, 1.0f, 0.0f, 0.0f);//回転
         glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
         gl::popMatrices();
         
     }
-    //ジェスチャー
     //メッセージリスト
     void drawListArea(){
         stringstream mm;
@@ -386,7 +342,7 @@ public:
     float mBaottom;//底
     float mBackSide;//背面
     float mFrontSide;//正面
-    //ddd
+
     //メッセージを取得する時に使う
     int messageNumber = -1;
 };
