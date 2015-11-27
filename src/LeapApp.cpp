@@ -6,6 +6,8 @@
 #include "cinder/Text.h"
 #include "cinder/MayaCamUI.h"
 #include "Leap.h"
+#include "Paint.h"
+#include "LeapMath.h"
 #include "cinder/params/Params.h"//パラメーターを動的に扱える
 #include "cinder/ImageIo.h"//画像を描画させたいときに使う
 #include "cinder/ObjLoader.h"//
@@ -112,6 +114,25 @@ public:
                            event.isMiddleDown(), event.isRightDown() );
     }
     
+    // キーダウン
+    void keyDown( KeyEvent event )
+    {
+        // Cを押したら軌跡をクリアする
+        if ( event.getChar() == event.KEY_c ) {
+            mPaint.clear();
+        }
+        // Mを押したらモードを変える
+        else if ( event.getChar() == event.KEY_m ) {
+            mPaint.set3DMode( !mPaint.get3DMode() );
+        }
+    }
+    
+    // 更新処理
+    void update()
+    {
+        mPaint.update();
+    }
+    
     //描写処理
 //    void *draw(void *p){
 //        if(!buffer){
@@ -132,9 +153,11 @@ public:
         gl::clear();
         //gl::pushMatrices();// カメラ位置を設定する
             gl::setMatrices( mMayaCam.getCamera() );
+        drawPainting();//指の軌跡を描く
             drawMarionette();//マリオネット描写
             drawListArea();//メッセージリストの表示
-            drawCircle();
+            drawCircle();//サークルで表示
+        
         //gl::popMatrices();
             // パラメーター設定UIを描画する
     }
@@ -244,7 +267,7 @@ public:
         gl::popMatrices();
     }
     
-    //
+    //サークル
     void drawCircle(){
         //sine, cosineを使った曲線的な拡大縮小///////////////////////////
         //この場合-A*sin(w*radians(t) - p)の計算結果は100.0~-100.0なので、
@@ -264,6 +287,27 @@ public:
 //        pushMatrices();
 //        gl::drawSolidCircle( Vec2f( -100,100 ), eSize, eSize );//指の位置
 //        popMatrices();
+    }
+    
+    void drawPainting(){
+        // 3次元のお絵かきの時は、カメラ座標を考慮する
+        if ( mPaint.get3DMode() ) {
+            // 表示座標系の保持
+            gl::pushMatrices();
+            
+            // カメラ位置を設定する
+            //gl::setMatrices( mMayaCam.getCamera() );
+        }
+        
+        // 描画
+        mPaint.draw();
+        
+        // 3次元のお絵かきの時は、カメラ座標を考慮する
+        if ( mPaint.get3DMode() ) {
+            // 表示座標系を戻す
+            gl::popMatrices();
+        }
+    
     }
     // テクスチャの描画
     void drawTexture(int x, int y){
@@ -343,7 +387,7 @@ public:
     //メッセージを取得する時に使う
     int messageNumber = -1;
 
-
+    Paint mPaint;
 
 
     float x, y;  //x, y座標
