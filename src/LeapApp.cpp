@@ -6,13 +6,15 @@
 #include "cinder/Text.h"
 #include "cinder/MayaCamUI.h"
 #include "Leap.h"
-#include "Paint.h"
+#include "Paint.h"//絵を描くためのもの
 #include "LeapMath.h"
 #include "cinder/params/Params.h"//パラメーターを動的に扱える
 #include "cinder/ImageIo.h"//画像を描画させたいときに使う
 #include "cinder/ObjLoader.h"//
 #include "cinder/Utilities.h"
 #include <math.h>
+#include "cinder/Capture.h"
+#include "cinder/params/Params.h"
 
 //ソケット通信
 #include <stdio.h>
@@ -69,12 +71,33 @@ public:
         // 表示フォントの設定
         mFont = Font( "YuGothic", 20 );
         
-        // カメラ(視点)の設定
-        mCam.setEyePoint( Vec3f( 0.0f, 150.0f, 1000.0f ) );//カメラの位置
-        mCam.setCenterOfInterestPoint( Vec3f( 0.0f, 0.0f, 1.0f ) );//カメラの中心座標
-        mCam.setPerspective( 45.0f, getWindowAspectRatio(), 50.0f, 3000.0f );//カメラから見える視界の設定
+//        // カメラ(視点)の設定
+//        mCam.setEyePoint( Vec3f( 750.0f, 450.0f, 1000.0f ) );//カメラの位置
+//        mCam.setCenterOfInterestPoint( Vec3f( 750.0f, 450.0f, 1.0f ) );//カメラの中心座標
+//        mCam.setPerspective( 45.0f, getWindowAspectRatio(), 50.0f, 3000.0f );//カメラから見える視界の設定
+//        
+//        mMayaCam.setCurrentCam(mCam);
         
-        mMayaCam.setCurrentCam(mCam);
+        
+        // Create our camera
+        mCapture = Capture(getWindowWidth(), getWindowHeight());
+        mCapture.start();
+        
+        
+        mCameraDistance = 1500.0f;
+        mEye			= Vec3f( 750.0f, 450.0f, mCameraDistance );
+        mCenter			= Vec3f( 750.0f, 450.0f, 1.0f);
+        mUp				= Vec3f::yAxis();
+        mCamPrep.setPerspective(  45.0f, getWindowAspectRatio(), 50.0f, 3000.0f );
+        
+        gl::enableAlphaBlending();
+        
+        // SETUP PARAMS
+        mParams = params::InterfaceGl( "LearnHow", Vec2i( 200, 160 ) );
+        mParams.addParam( "Scene Rotation", &mSceneRotation, "opened=1" );
+        mParams.addSeparator();
+        mParams.addParam( "Eye Distance", &mCameraDistance, "min=50.0 max=1500.0 step=50.0 keyIncr=s keyDecr=w" );
+        
         
         // アルファブレンディングを有効にする
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -95,11 +118,12 @@ public:
         //pthread_join(threadSoc,NULL);
         //exit(EXIT_SUCCESS);
         
-        //smoothstep();
         A = 100.0;    //振幅を設定
         w = 1.0;    //角周波数を設定
         p = 0.0;    //初期位相を設定
         t = 0.0;    //経過時間を初期化
+        
+        mPaint.set3DMode( !mPaint.get3DMode() );
     }
     void setupSocketSv();
     void socketSv();
@@ -115,22 +139,33 @@ public:
     }
     
     // キーダウン
-    void keyDown( KeyEvent event )
-    {
+    void keyDown( KeyEvent event ){
         // Cを押したら軌跡をクリアする
         if ( event.getChar() == event.KEY_c ) {
             mPaint.clear();
         }
-        // Mを押したらモードを変える
-        else if ( event.getChar() == event.KEY_m ) {
-            mPaint.set3DMode( !mPaint.get3DMode() );
+        switch( event.getCode() )
+        {
+            case KeyEvent::KEY_ESCAPE:
+                quit();
+                break;
+            default:
+                break;
         }
     }
-    
     // 更新処理
-    void update()
-    {
+    void update(){
         mPaint.update();
+        // UPDATE CAMERA
+        mEye = Vec3f( 0.0f, 0.0f, mCameraDistance );
+        mCamPrep.lookAt( mEye, mCenter, mUp );
+        gl::setMatrices( mCamPrep );
+        gl::rotate( mSceneRotation );
+        
+        if( mCapture.checkNewFrame() ) {
+            imgTexture = gl::Texture(mCapture.getSurface() );
+            
+        }
     }
     
     //描写処理
@@ -151,15 +186,24 @@ public:
     //描写処理
     void draw(){
         gl::clear();
-        //gl::pushMatrices();// カメラ位置を設定する
+        gl::enableDepthRead();
+        gl::enableDepthWrite();
+
+        gl::pushMatrices();// カメラ位置を設定する
             gl::setMatrices( mMayaCam.getCamera() );
-        drawPainting();//指の軌跡を描く
+            drawPainting();//指の軌跡を描く
             drawMarionette();//マリオネット描写
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
-        
-        //gl::popMatrices();
-            // パラメーター設定UIを描画する
+        gl::popMatrices();
+        // パラメーター設定UIを描画する
+        mParams.draw();
+        if( imgTexture ) {
+            gl::draw( backgroundImage, getWindowBounds());
+        }else{
+            gl::drawString("Loading image please wait..",getWindowCenter());
+            
+        }
     }
     
     //マリオネット
@@ -276,7 +320,7 @@ public:
         y = A*sin(w*(t * PI / 180.0) - p) + 100;
 
         pushMatrices();
-        gl::drawSphere(Vec3f( -300, 100, -300 ), y, y );//指の位置
+        gl::drawSphere(Vec3f( 360, 675, -300 ), y, y );//指の位置
         popMatrices();
         t += speed1;    //時間を進める
         if(t > 360.0) t = 0.0;
@@ -290,24 +334,18 @@ public:
     }
     
     void drawPainting(){
-        // 3次元のお絵かきの時は、カメラ座標を考慮する
-        if ( mPaint.get3DMode() ) {
-            // 表示座標系の保持
-            gl::pushMatrices();
-            
-            // カメラ位置を設定する
-            //gl::setMatrices( mMayaCam.getCamera() );
-        }
+        
+        // 表示座標系の保持
+        gl::pushMatrices();
+        
+        // カメラ位置を設定する
+        gl::setMatrices( mMayaCam.getCamera() );
+        
         
         // 描画
         mPaint.draw();
+        gl::popMatrices();
         
-        // 3次元のお絵かきの時は、カメラ座標を考慮する
-        if ( mPaint.get3DMode() ) {
-            // 表示座標系を戻す
-            gl::popMatrices();
-        }
-    
     }
     // テクスチャの描画
     void drawTexture(int x, int y){
@@ -363,16 +401,16 @@ public:
     float mTotalMotionScale2 = 1.0f;//拡大縮小（表情）
     
     //ci::Vec3f defFaceTrans(new Point3D(0.0, 120.0, 50.0));
-    float defFaceTransX = 0.0;//顔のx座標の位置
-    float defFaceTransY = 110.0;//顔のy座標の位置
+    float defFaceTransX = 1080.0;//顔のx座標の位置
+    float defFaceTransY = 675+110.0;//顔のy座標の位置
     float defFaceTransZ = 0.0;//顔のz座標の位置
     
-    float defBodyTransX = 0.0;//体のx座標の位置
-    float defBodyTransY = 0.0;//体のy座標の位置
+    float defBodyTransX = 1080.0;//体のx座標の位置
+    float defBodyTransY = 675.0;//体のy座標の位置
     float defBodyTransZ = 0.0;//体のz座標の位置
     
-    float defArmTransX=75.0;
-    float defArmTransY=20.0;
+    float defArmTransX=1080.0+75.0;
+    float defArmTransY=675+20.0;
     float defArmTransZ=0.0;
 
     float rightEyeAngle = 0.0;//右目の角度
@@ -399,8 +437,21 @@ public:
     float speed2 = 1.0;
     float eSize = 0.0;
 
+    Leap::Controller mLeap;
 
-
+    
+    // declare our variables
+    Capture	        mCapture;
+    gl::Texture		imgTexture;
+    
+   
+    // CAMERA Controls
+    CameraPersp mCamPrep;
+    Quatf				mSceneRotation;
+    float				mCameraDistance;
+    Vec3f				mEye, mCenter, mUp;
+    
+    
 };
 CINDER_APP_NATIVE( LeapApp, RendererGl )
 
