@@ -90,10 +90,10 @@ public:
         
         
         mCameraDistance = 1500.0f;//カメラの距離（z座標）
-        mEye			= Vec3f( 750.0f, 450.0f, mCameraDistance );//位置
-        mCenter			= Vec3f( 750.0f, 450.0f, 0.0f);//カメラのみる先
+        mEye			= Vec3f( getWindowWidth()/2, getWindowHeight()/2, mCameraDistance );//位置
+        mCenter			= Vec3f( getWindowWidth()/2, getWindowHeight()/2, 0.0f);//カメラのみる先
         //mUp				= Vec3f::yAxis();//頭の方向を表すベクトル
-        mCam.setEyePoint( Vec3f( 750.0f, 450.0f, mCameraDistance ) );//カメラの位置
+        mCam.setEyePoint( mEye );//カメラの位置
         mCam.setCenterOfInterestPoint(mCenter);//カメラのみる先
         //(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar)
         //fozyはカメラの画角、値が大きいほど透視が強くなり、絵が小さくなる
@@ -238,10 +238,10 @@ public:
 
         gl::pushMatrices();// カメラ位置を設定する
             gl::setMatrices( mMayaCam.getCamera() );
-            drawPainting();//指の軌跡を描く
             drawMarionette();//マリオネット描写
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
+            drawPainting();//指の軌跡を描く
             drawAudioAnalyze();//音声解析の描写
             drawSinGraph();//sinグラフを描く
         gl::popMatrices();
@@ -473,8 +473,6 @@ public:
 //        console() << "bin: " << bin << ", freqency (hertz): " << freq << " - " << freq + binFreqWidth << ", magnitude (decibels): " << mag << endl;
         
     }
-    
-    
     
     // テクスチャの描画
     void drawTexture(int x, int y){

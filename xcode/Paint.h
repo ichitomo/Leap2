@@ -31,7 +31,7 @@ public:
         
         // ウィンドウの座標に変換する
         float x = normalizedPosition.x * Width;
-        float y = Height- (normalizedPosition.y * Height);
+        float y = -(Height- (normalizedPosition.y * Height))+Width/2;
         
         mPointablePoints.clear();
         //ポインタブルオブジェクトの座標を取得する
