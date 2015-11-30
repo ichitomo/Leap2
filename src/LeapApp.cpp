@@ -241,14 +241,16 @@ public:
             drawMarionette();//マリオネット描写
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
-        drawAudioAnalyze();//音声解析の描写
+            drawAudioAnalyze();//音声解析の描写
         gl::popMatrices();
         
         // パラメーター設定UIを描画する
         mParams.draw();
         if( imgTexture ) {
+            //バックグラウンドイメージを追加
             gl::draw( backgroundImage, getWindowBounds());
         }else{
+            //ロードする間にコメント
             gl::drawString("Loading image please wait..",getWindowCenter());
             
         }
@@ -359,7 +361,7 @@ public:
         gl::popMatrices();
     }
     
-    //サークル
+    //サークル（手の数によって大きくなる球体の描写）
     void drawCircle(){
         //sine, cosineを使った曲線的な拡大縮小///////////////////////////
         //この場合-A*sin(w*radians(t) - p)の計算結果は100.0~-100.0なので、
@@ -380,7 +382,7 @@ public:
 //        gl::drawSolidCircle( Vec2f( -100,100 ), eSize, eSize );//指の位置
 //        popMatrices();
     }
-    
+    //お絵かき（手の軌跡を描写する）
     void drawPainting(){
         
         // 表示座標系の保持
@@ -394,6 +396,13 @@ public:
         gl::popMatrices();
         
     }
+    
+    
+    
+    //手を描く
+    void drawHand(){}
+    
+    
     
     //音声解析の描写
     void drawAudioAnalyze(){
@@ -432,6 +441,9 @@ public:
 //        console() << "bin: " << bin << ", freqency (hertz): " << freq << " - " << freq + binFreqWidth << ", magnitude (decibels): " << mag << endl;
         
     }
+    
+    
+    
     // テクスチャの描画
     void drawTexture(int x, int y){
         
