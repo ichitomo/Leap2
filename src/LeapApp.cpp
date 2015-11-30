@@ -402,23 +402,27 @@ public:
     //sinグラフを描く
     void drawSinGraph(){
         
+        glPushMatrix();
+        gl::setMatrices( mMayaCam.getCamera() );
         drawGrid();  //基準線
         //サイン波を点で静止画として描画///////////////////////////
         for (t1 = 0.0; t1 < WindowWidth; t1 += speed) {
-            y = -A*sin(w*(t1 * PI / 180.0) - p);    //processingのy座標は数学の座標と反対のため、-にする
+            y = A*sin(w*(t1 * PI / 180.0) - p);
             drawSolidCircle(Vec2f(t1, y + WindowHeight/2), 1);  //円を描く
         }
         
         //点のアニメーションを描画////////////////////////////////
-        y = -A*sin(w*(t2 * PI / 180.0) - p);    //processingのy座標は数学の座標と反対のため、-にする
+        y = A*sin(w*(t2 * PI / 180.0) - p);
         drawSolidCircle(Vec2f(t2, y + WindowHeight/2), 10);  //円を描く
         
         t2 += speed;    //時間を進める
         if (t2 > WindowWidth) t2 = 0.0;    //点が右端まで行ったらになったら原点に戻る
-        
+        glPopMatrix();
         
     }
     void drawGrid(){
+        glPushMatrix();
+        gl::setMatrices( mMayaCam.getCamera() );
         //横線
         glBegin(GL_LINES);
         glVertex2d(WindowWidth/2, 0);
@@ -429,6 +433,7 @@ public:
         glVertex2d(0, WindowHeight/2);
         glVertex2d(WindowWidth, WindowHeight/2);
         glEnd();
+        glPopMatrix();
     }
     
     //手を描く
