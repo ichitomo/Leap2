@@ -148,4 +148,19 @@ dependencies: /Users/ichinosetomohiro/Desktop/Leap2/src/LeapApp.cpp \
   ../../cinder_0.8.6_mac/boost/boost/math/special_functions/fpclassify.hpp \
   ../../cinder_0.8.6_mac/boost/boost/math/tools/real_cast.hpp \
   ../../cinder_0.8.6_mac/boost/boost/container/container_fwd.hpp \
-  ../../cinder_0.8.6_mac/include/cinder/Capture.h
+  ../../cinder_0.8.6_mac/include/cinder/Capture.h \
+  ../../cinder_0.8.6_mac/include/cinder/gl/TextureFont.h \
+  ../../cinder_0.8.6_mac/include/cinder/audio/Context.h \
+  ../../cinder_0.8.6_mac/include/cinder/audio/Node.h \
+  ../../cinder_0.8.6_mac/include/cinder/audio/Buffer.h \
+  ../../cinder_0.8.6_mac/include/cinder/CinderAssert.h \
+  ../../cinder_0.8.6_mac/include/cinder/CurrentFunction.h \
+  ../../cinder_0.8.6_mac/include/cinder/audio/Exception.h \
+  ../../cinder_0.8.6_mac/include/cinder/audio/InputNode.h \
+  ../../cinder_0.8.6_mac/include/cinder/audio/Param.h \
+  ../../cinder_0.8.6_mac/include/cinder/audio/Device.h \
+  ../../cinder_0.8.6_mac/include/cinder/audio/OutputNode.h \
+  ../../cinder_0.8.6_mac/include/cinder/audio/MonitorNode.h \
+  ../../cinder_0.8.6_mac/include/cinder/audio/dsp/Dsp.h \
+  ../../cinder_0.8.6_mac/include/cinder/audio/dsp/RingBuffer.h \
+  /Users/ichinosetomohiro/Desktop/Leap2/src/../common/AudioDrawUtils.h

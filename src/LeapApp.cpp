@@ -16,6 +16,13 @@
 #include "cinder/Capture.h"
 #include "cinder/params/Params.h"
 
+//音声解析
+#include "cinder/gl/TextureFont.h"
+#include "cinder/audio/Context.h"
+#include "cinder/audio/MonitorNode.h"
+#include "../common/AudioDrawUtils.h"
+
+
 //ソケット通信
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,6 +41,7 @@ using namespace ci;
 using namespace ci::app;
 using namespace std;
 using namespace cinder::gl;
+using namespace cinder::audio;
 
 #define PI 3.141592653589793
 
@@ -77,22 +85,22 @@ public:
         
         
         // カメラ(視点)の設定
-        
-        // Create our camera
         mCapture = Capture(getWindowWidth(), getWindowHeight());
         mCapture.start();
         
         
         mCameraDistance = 1500.0f;//カメラの距離（z座標）
-        mEye			= Vec3f( 750.0f, 450.0f, mCameraDistance );
-        mCenter			= Vec3f( 750.0f, 450.0f, 1.0f);
-        mUp				= Vec3f::yAxis();//回転させる
-        //mCamPrep.setPerspective(  45.0f, getWindowAspectRatio(), 50.0f, 3000.0f );
-
-        
+        mEye			= Vec3f( 750.0f, 450.0f, mCameraDistance );//位置
+        mCenter			= Vec3f( 750.0f, 450.0f, 0.0f);//カメラのみる先
+        //mUp				= Vec3f::yAxis();//頭の方向を表すベクトル
         mCam.setEyePoint( Vec3f( 750.0f, 450.0f, mCameraDistance ) );//カメラの位置
-        mCam.setCenterOfInterestPoint(mCenter);//カメラの中心座標
-        mCam.setPerspective( 45.0f, getWindowAspectRatio(), 50.0f, 3000.0f );//カメラから見える視界の設定
+        mCam.setCenterOfInterestPoint(mCenter);//カメラのみる先
+        //(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar)
+        //fozyはカメラの画角、値が大きいほど透視が強くなり、絵が小さくなる
+        //getWindowAspectRatio()はアスペクト比
+        //nNearは奥行きの範囲：手前（全方面）
+        //zFarは奥行きの範囲：後方（後方面）
+        mCam.setPerspective( 45.0f, getWindowAspectRatio(), 300.0f, 3000.0f );//カメラから見える視界の設定
         
         mMayaCam.setCurrentCam(mCam);
         
@@ -129,13 +137,37 @@ public:
         p = 0.0;    //初期位相を設定
         t = 0.0;    //経過時間を初期化
         
+        //3Dのお絵かきモード
         mPaint.set3DMode( !mPaint.get3DMode() );
+        
+        //音声解析を追加
+        
+        auto ctx = audio::Context::master();
+        
+        //入力デバイスノードを使用すると、コンテキストに特殊な方法を使用して作成しますので、プラットフォーム固有です
+        mInputDeviceNode = ctx->createInputDeviceNode();
+        
+        //二重FFTサイズを提供することにより、ウィンドウサイズの、我々が与える「ゼロ・パッド」の分析データを
+        //得られたスペクトルデータの解像度の増加。
+
+        auto monitorFormat = audio::MonitorSpectralNode::Format().fftSize( WindowWidth*2 ).windowSize( WindowWidth );
+        mMonitorSpectralNode = ctx->makeNode( new audio::MonitorSpectralNode( monitorFormat ) );
+        
+        mInputDeviceNode >> mMonitorSpectralNode;
+        
+        //InputDeviceNode（およびすべてのInputNodeサブクラス）は、オーディオを処理するため有効にする必要があります
+        mInputDeviceNode->enable();
+        ctx->enable();
+        
+        getWindow()->setTitle( mInputDeviceNode->getDevice()->getName() );
     }
     void setupSocketSv();
     void socketSv();
     // マウスのクリック
     void mouseDown( MouseEvent event ){
         mMayaCam.mouseDown( event.getPos() );
+        if( mSpectrumPlot.getBounds().contains( event.getPos() ) )
+            drawPrintBinInfo( event.getX() );
     }
     
     // マウスのドラッグ
@@ -161,10 +193,11 @@ public:
     }
     // 更新処理
     void update(){
+        //お絵かきモードのアップデート処理
         mPaint.update();
-        // UPDATE CAMERA
+        //カメラのアップデート処理
         mEye = Vec3f( 0.0f, 0.0f, mCameraDistance );//距離を変える
-        mCamPrep.lookAt( mEye, mCenter);//回転、距離等を変える
+        mCamPrep.lookAt( mEye, mCenter, mUp);//カメラの位置、m詰めている先の位置、カメラの頭の方向を表すベクトル
         gl::setMatrices( mCamPrep );
         gl::rotate( mSceneRotation );//カメラの回転
         
@@ -172,6 +205,13 @@ public:
             imgTexture = gl::Texture(mCapture.getSurface() );
             
         }
+        
+        
+        //音声解析のアップデート処理
+        mSpectrumPlot.setBounds( Rectf( 40, 40, (float)getWindowWidth() - 40, (float)getWindowHeight() - 40 ) );
+        
+        //アップデートごとに一度、メインスレッド上でノードから振幅スペクトルをコピーします。
+        mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
     }
     
     //描写処理
@@ -201,7 +241,9 @@ public:
             drawMarionette();//マリオネット描写
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
+        drawAudioAnalyze();//音声解析の描写
         gl::popMatrices();
+        
         // パラメーター設定UIを描画する
         mParams.draw();
         if( imgTexture ) {
@@ -352,6 +394,44 @@ public:
         gl::popMatrices();
         
     }
+    
+    //音声解析の描写
+    void drawAudioAnalyze(){
+        glPushMatrix();
+        mSpectrumPlot.draw( mMagSpectrum );
+        drawLabels();
+        glPopMatrix();
+    }
+    
+    //音声解析のラベルの描写
+    void drawLabels(){
+        if( ! mTextureFont )
+            mTextureFont = gl::TextureFont::create( Font( Font::getDefault().getName(), 16 ) );
+        gl::color( 0, 0.9f, 0.9f );
+        
+        // x座標のラベル
+        string freqLabel = "Frequency (hertz)";
+        mTextureFont->drawString( freqLabel, Vec2f( getWindowCenter().x - mTextureFont->measureString( freqLabel ).x / 2, (float)getWindowHeight() - 20 ) );
+        
+        // y座標のラベル
+        string dbLabel = "Magnitude (decibels, linear)";
+        gl::pushModelView();
+        gl::translate( 30, getWindowCenter().y + mTextureFont->measureString( dbLabel ).x / 2 );
+        gl::rotate( -90 );
+        mTextureFont->drawString( dbLabel, Vec2f::zero() );
+        gl::popModelView();
+    }
+    void drawPrintBinInfo( int mouseX ){
+        size_t numBins = mMonitorSpectralNode->getFftSize() / 2;
+        size_t bin = min( numBins - 1, size_t( ( numBins * ( mouseX - mSpectrumPlot.getBounds().x1 ) ) / mSpectrumPlot.getBounds().getWidth() ) );
+        
+//        float binFreqWidth = mMonitorSpectralNode->getFreqForBin( 1 ) - mMonitorSpectralNode->getFreqForBin( 0 );
+//        float freq = mMonitorSpectralNode->getFreqForBin( bin );
+//        float mag = cinder::audio::linearToDecibel( mMagSpectrum[bin] );
+//        
+//        console() << "bin: " << bin << ", freqency (hertz): " << freq << " - " << freq + binFreqWidth << ", magnitude (decibels): " << mag << endl;
+        
+    }
     // テクスチャの描画
     void drawTexture(int x, int y){
         
@@ -456,6 +536,14 @@ public:
     Quatf				mSceneRotation;
     float				mCameraDistance;
     Vec3f				mEye, mCenter, mUp;
+    
+    //音声解析に必要な変数
+    audio::InputDeviceNodeRef		mInputDeviceNode;
+    audio::MonitorSpectralNodeRef	mMonitorSpectralNode;
+    vector<float>					mMagSpectrum;
+    
+    SpectrumPlot					mSpectrumPlot;
+    gl::TextureFontRef				mTextureFont;
     
     
 };
