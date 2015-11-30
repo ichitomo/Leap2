@@ -59,6 +59,10 @@ class LeapApp : public AppNative {
     
 public:
     
+    void prepareSettings( Settings *settings ) {
+        settings->setFrameRate(60);
+    }
+    
     void setup(){
         // ウィンドウの位置とサイズを設定
         setWindowPos( 0, 0 );
@@ -71,24 +75,26 @@ public:
         // 表示フォントの設定
         mFont = Font( "YuGothic", 20 );
         
-//        // カメラ(視点)の設定
-//        mCam.setEyePoint( Vec3f( 750.0f, 450.0f, 1000.0f ) );//カメラの位置
-//        mCam.setCenterOfInterestPoint( Vec3f( 750.0f, 450.0f, 1.0f ) );//カメラの中心座標
-//        mCam.setPerspective( 45.0f, getWindowAspectRatio(), 50.0f, 3000.0f );//カメラから見える視界の設定
-//        
-//        mMayaCam.setCurrentCam(mCam);
         
+        // カメラ(視点)の設定
         
         // Create our camera
         mCapture = Capture(getWindowWidth(), getWindowHeight());
         mCapture.start();
         
         
-        mCameraDistance = 1500.0f;
+        mCameraDistance = 1500.0f;//カメラの距離（z座標）
         mEye			= Vec3f( 750.0f, 450.0f, mCameraDistance );
         mCenter			= Vec3f( 750.0f, 450.0f, 1.0f);
-        mUp				= Vec3f::yAxis();
-        mCamPrep.setPerspective(  45.0f, getWindowAspectRatio(), 50.0f, 3000.0f );
+        mUp				= Vec3f::yAxis();//回転させる
+        //mCamPrep.setPerspective(  45.0f, getWindowAspectRatio(), 50.0f, 3000.0f );
+
+        
+        mCam.setEyePoint( Vec3f( 750.0f, 450.0f, mCameraDistance ) );//カメラの位置
+        mCam.setCenterOfInterestPoint(mCenter);//カメラの中心座標
+        mCam.setPerspective( 45.0f, getWindowAspectRatio(), 50.0f, 3000.0f );//カメラから見える視界の設定
+        
+        mMayaCam.setCurrentCam(mCam);
         
         gl::enableAlphaBlending();
         
@@ -157,10 +163,10 @@ public:
     void update(){
         mPaint.update();
         // UPDATE CAMERA
-        mEye = Vec3f( 0.0f, 0.0f, mCameraDistance );
-        mCamPrep.lookAt( mEye, mCenter, mUp );
+        mEye = Vec3f( 0.0f, 0.0f, mCameraDistance );//距離を変える
+        mCamPrep.lookAt( mEye, mCenter);//回転、距離等を変える
         gl::setMatrices( mCamPrep );
-        gl::rotate( mSceneRotation );
+        gl::rotate( mSceneRotation );//カメラの回転
         
         if( mCapture.checkNewFrame() ) {
             imgTexture = gl::Texture(mCapture.getSurface() );
@@ -254,7 +260,7 @@ public:
         //右腕を描く
         gl::pushMatrices();
             setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defArmTransX,defArmTransY,defArmTransZ);//移動
+            glTranslatef(defRightArmTransX,defArmTransY,defArmTransZ);//移動
             glRotatef(mRotateMatrix2, 1.0f, 1.0f, 0.0f);//回転
             //glTranslatef( mTotalMotionTranslation.x/10.0,mTotalMotionTranslation.y/10.0,0.0f);//移動
             glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
@@ -270,7 +276,7 @@ public:
         //左腕を描く
         gl::pushMatrices();
             setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(-defArmTransX,defArmTransY,defArmTransZ);//移動
+            glTranslatef(defLeftArmTransX,defArmTransY,defArmTransZ);//移動
             glRotatef(-mRotateMatrix4, -1.0f, 1.0f, 0.0f);//回転
             //glTranslatef(10.0,10.0,0.0f);//移動
             glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
@@ -341,7 +347,6 @@ public:
         // カメラ位置を設定する
         gl::setMatrices( mMayaCam.getCamera() );
         
-        
         // 描画
         mPaint.draw();
         gl::popMatrices();
@@ -409,7 +414,8 @@ public:
     float defBodyTransY = 675.0;//体のy座標の位置
     float defBodyTransZ = 0.0;//体のz座標の位置
     
-    float defArmTransX=1080.0+75.0;
+    float defLeftArmTransX=1080.0+75.0;
+    float defRightArmTransX=1080.0-75.0;
     float defArmTransY=675+20.0;
     float defArmTransZ=0.0;
 
