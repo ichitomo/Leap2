@@ -136,6 +136,7 @@ public:
         w = 1.0;    //角周波数を設定
         p = 0.0;    //初期位相を設定
         t = 0.0;    //経過時間を初期化
+        t2 = 0.0;    //経過時間を初期化
         
         //3Dのお絵かきモード
         mPaint.set3DMode( !mPaint.get3DMode() );
@@ -241,14 +242,17 @@ public:
             drawMarionette();//マリオネット描写
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
-        drawAudioAnalyze();//音声解析の描写
+            drawAudioAnalyze();//音声解析の描写
+            drawSinGraph();//sinグラフを描く
         gl::popMatrices();
         
         // パラメーター設定UIを描画する
         mParams.draw();
         if( imgTexture ) {
+            //バックグラウンドイメージを追加
             gl::draw( backgroundImage, getWindowBounds());
         }else{
+            //ロードする間にコメント
             gl::drawString("Loading image please wait..",getWindowCenter());
             
         }
@@ -359,7 +363,7 @@ public:
         gl::popMatrices();
     }
     
-    //サークル
+    //サークル（手の数によって大きくなる球体の描写）
     void drawCircle(){
         //sine, cosineを使った曲線的な拡大縮小///////////////////////////
         //この場合-A*sin(w*radians(t) - p)の計算結果は100.0~-100.0なので、
@@ -380,7 +384,7 @@ public:
 //        gl::drawSolidCircle( Vec2f( -100,100 ), eSize, eSize );//指の位置
 //        popMatrices();
     }
-    
+    //お絵かき（手の軌跡を描写する）
     void drawPainting(){
         
         // 表示座標系の保持
@@ -394,6 +398,43 @@ public:
         gl::popMatrices();
         
     }
+    
+    //sinグラフを描く
+    void drawSinGraph(){
+        
+        drawGrid();  //基準線
+        //サイン波を点で静止画として描画///////////////////////////
+        for (t1 = 0.0; t1 < WindowWidth; t1 += speed) {
+            y = -A*sin(w*(t1 * PI / 180.0) - p);    //processingのy座標は数学の座標と反対のため、-にする
+            drawSolidCircle(Vec2f(t1, y + WindowHeight/2), 1);  //円を描く
+        }
+        
+        //点のアニメーションを描画////////////////////////////////
+        y = -A*sin(w*(t2 * PI / 180.0) - p);    //processingのy座標は数学の座標と反対のため、-にする
+        drawSolidCircle(Vec2f(t2, y + WindowHeight/2), 10);  //円を描く
+        
+        t2 += speed;    //時間を進める
+        if (t2 > WindowWidth) t2 = 0.0;    //点が右端まで行ったらになったら原点に戻る
+        
+        
+    }
+    void drawGrid(){
+        //横線
+        glBegin(GL_LINES);
+        glVertex2d(WindowWidth/2, 0);
+        glVertex2d(WindowWidth/2, WindowHeight);
+        glEnd();
+        //横線
+        glBegin(GL_LINES);
+        glVertex2d(0, WindowHeight/2);
+        glVertex2d(WindowWidth, WindowHeight/2);
+        glEnd();
+    }
+    
+    //手を描く
+    void drawHand(){}
+    
+    
     
     //音声解析の描写
     void drawAudioAnalyze(){
@@ -432,6 +473,9 @@ public:
 //        console() << "bin: " << bin << ", freqency (hertz): " << freq << " - " << freq + binFreqWidth << ", magnitude (decibels): " << mag << endl;
         
     }
+    
+    
+    
     // テクスチャの描画
     void drawTexture(int x, int y){
         
@@ -522,7 +566,12 @@ public:
     float speed1 = 1.0;    //アニメーションの基準となるスピード
     float speed2 = 1.0;
     float eSize = 0.0;
-
+    //sinグラフ
+    float t1;  //静止画用経過時間（X座標）
+    float t2;  //アニメーション用経過時間（X座標）
+    float speed = 1.0;    //アニメーションのスピード
+    
+    
     Leap::Controller mLeap;
 
     
