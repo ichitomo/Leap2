@@ -6,10 +6,15 @@
 #include "cinder/Text.h"
 #include "cinder/MayaCamUI.h"
 #include "Leap.h"
+#include "Paint.h"//絵を描くためのもの
+#include "LeapMath.h"
 #include "cinder/params/Params.h"//パラメーターを動的に扱える
 #include "cinder/ImageIo.h"//画像を描画させたいときに使う
 #include "cinder/ObjLoader.h"//
 #include "cinder/Utilities.h"
+#include <math.h>
+#include "cinder/Capture.h"
+#include "cinder/params/Params.h"
 
 //ソケット通信
 #include <stdio.h>
@@ -30,32 +35,7 @@ using namespace ci::app;
 using namespace std;
 using namespace cinder::gl;
 
-struct Messages_base{
-    char message[40];
-    //int num;
-};
-
-Messages_base messageList[] = {
-    
-    {"わかった"},
-    {"わからない"},
-    {"もう一度"},
-    {"戻って"},
-    {"速い"},
-    {"大きな声で"},
-    {"面白い"},
-    {"いいね！"},
-    {"すごい！"},
-    {"かっこいい"},
-    {"なるほど"},
-    {"ありがとうございます"},
-    {"うわー"},
-    {"楽しみ"},
-    {"はい"},
-    {"いいえ"},
-    {"きたー"},
-    {"トイレに行きたいです"},
-};
+#define PI 3.141592653589793
 
 void error(const char *msg){
     //エラーメッセージ
@@ -70,11 +50,18 @@ char buffer[256];
 struct sockaddr_in serv_addr, cli_addr;
 int n;
 
+//socketとdrawを機能させる
+char flag[] = "9999";
+
 void *socketSv_loop(void *p);
 
 class LeapApp : public AppNative {
     
 public:
+    
+    void prepareSettings( Settings *settings ) {
+        settings->setFrameRate(60);
+    }
     
     void setup(){
         // ウィンドウの位置とサイズを設定
@@ -88,12 +75,35 @@ public:
         // 表示フォントの設定
         mFont = Font( "YuGothic", 20 );
         
+        
         // カメラ(視点)の設定
-        mCam.setEyePoint( Vec3f( 0.0f, 150.0f, 500.0f ) );//カメラの位置
-        mCam.setCenterOfInterestPoint( Vec3f( 0.0f, 0.0f, 1.0f ) );//カメラの中心座標
+        
+        // Create our camera
+        mCapture = Capture(getWindowWidth(), getWindowHeight());
+        mCapture.start();
+        
+        
+        mCameraDistance = 1500.0f;//カメラの距離（z座標）
+        mEye			= Vec3f( 750.0f, 450.0f, mCameraDistance );
+        mCenter			= Vec3f( 750.0f, 450.0f, 1.0f);
+        mUp				= Vec3f::yAxis();//回転させる
+        //mCamPrep.setPerspective(  45.0f, getWindowAspectRatio(), 50.0f, 3000.0f );
+
+        
+        mCam.setEyePoint( Vec3f( 750.0f, 450.0f, mCameraDistance ) );//カメラの位置
+        mCam.setCenterOfInterestPoint(mCenter);//カメラの中心座標
         mCam.setPerspective( 45.0f, getWindowAspectRatio(), 50.0f, 3000.0f );//カメラから見える視界の設定
         
         mMayaCam.setCurrentCam(mCam);
+        
+        gl::enableAlphaBlending();
+        
+        // SETUP PARAMS
+        mParams = params::InterfaceGl( "LearnHow", Vec2i( 200, 160 ) );
+        mParams.addParam( "Scene Rotation", &mSceneRotation, "opened=1" );
+        mParams.addSeparator();
+        mParams.addParam( "Eye Distance", &mCameraDistance, "min=50.0 max=1500.0 step=50.0 keyIncr=s keyDecr=w" );
+        
         
         // アルファブレンディングを有効にする
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -101,7 +111,6 @@ public:
         
         //backgroundImageの読み込み
         backgroundImage = gl::Texture(loadImage(loadResource("../resources/image.jpg")));
-        
         
         // 描画時に奥行きの考慮を有効にする
         gl::enableDepthRead();
@@ -111,27 +120,98 @@ public:
         pthread_t threadSoc;
         
         pthread_create(&threadSoc, NULL, socketSv_loop, NULL);
+        
         //pthread_join(threadSoc,NULL);
         //exit(EXIT_SUCCESS);
+        
+        A = 100.0;    //振幅を設定
+        w = 1.0;    //角周波数を設定
+        p = 0.0;    //初期位相を設定
+        t = 0.0;    //経過時間を初期化
+        
+        mPaint.set3DMode( !mPaint.get3DMode() );
     }
     void setupSocketSv();
     void socketSv();
+    // マウスのクリック
+    void mouseDown( MouseEvent event ){
+        mMayaCam.mouseDown( event.getPos() );
+    }
+    
+    // マウスのドラッグ
+    void mouseDrag( MouseEvent event ){
+        mMayaCam.mouseDrag( event.getPos(), event.isLeftDown(),
+                           event.isMiddleDown(), event.isRightDown() );
+    }
+    
+    // キーダウン
+    void keyDown( KeyEvent event ){
+        // Cを押したら軌跡をクリアする
+        if ( event.getChar() == event.KEY_c ) {
+            mPaint.clear();
+        }
+        switch( event.getCode() )
+        {
+            case KeyEvent::KEY_ESCAPE:
+                quit();
+                break;
+            default:
+                break;
+        }
+    }
+    // 更新処理
+    void update(){
+        mPaint.update();
+        // UPDATE CAMERA
+        mEye = Vec3f( 0.0f, 0.0f, mCameraDistance );//距離を変える
+        mCamPrep.lookAt( mEye, mCenter);//回転、距離等を変える
+        gl::setMatrices( mCamPrep );
+        gl::rotate( mSceneRotation );//カメラの回転
+        
+        if( mCapture.checkNewFrame() ) {
+            imgTexture = gl::Texture(mCapture.getSurface() );
+            
+        }
+    }
     
     //描写処理
-    void *draw(void *p){
+//    void *draw(void *p){
+//        if(!buffer){
+//            gl::clear();
+//            gl::pushMatrices();// カメラ位置を設定する
+//            gl::setMatrices( mMayaCam.getCamera() );
+//            drawMarionette();//マリオネット描写
+//            drawListArea();//メッセージリストの表示
+//            gl::popMatrices();
+//            // パラメーター設定UIを描画する
+//        }
+//        return NULL;
+//    }
+
+    
+    //描写処理
+    void draw(){
         gl::clear();
-        //gl::draw(backgroundImage, getWindowBounds());//backgroundImageの描写
+        gl::enableDepthRead();
+        gl::enableDepthWrite();
+
         gl::pushMatrices();// カメラ位置を設定する
-        gl::setMatrices( mMayaCam.getCamera() );
-        drawMarionette();//マリオネット描写
-        drawListArea();//メッセージリストの表示
-        //gl::draw(backgroundImage, getWindowBounds());//backgroundImageの描写
+            gl::setMatrices( mMayaCam.getCamera() );
+            drawPainting();//指の軌跡を描く
+            drawMarionette();//マリオネット描写
+            drawListArea();//メッセージリストの表示
+            drawCircle();//サークルで表示
         gl::popMatrices();
         // パラメーター設定UIを描画する
-        //mParams.draw();
-        return NULL;
+        mParams.draw();
+        if( imgTexture ) {
+            gl::draw( backgroundImage, getWindowBounds());
+        }else{
+            gl::drawString("Loading image please wait..",getWindowCenter());
+            
+        }
     }
-   
+    
     //マリオネット
     void drawMarionette(){
         
@@ -139,37 +219,29 @@ public:
         
         //頭
         gl::pushMatrices();
-        setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defFaceTransX,
-                     mTotalMotionTranslation.y+defFaceTransY,
-                     mTotalMotionTranslation.z+defFaceTransZ );//位置
-        glRotatef(-mRotateMatrix3, 1.0f, 0.0f, 0.0f);//回転
-        glScalef( mTotalMotionScale, mTotalMotionScale, mTotalMotionScale );//大きさ
-        glTranslatef( mTotalMotionTranslation.x/10.0,0.0f,0.0f);//移動
-        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 80, 100 ) );//実体
+            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
+            glTranslatef(defFaceTransX,defFaceTransY,defFaceTransZ );//位置
+            glRotatef(-mRotateMatrix3, 1.0f, 0.0f, 0.0f);//回転
+            glScalef( mTotalMotionScale, mTotalMotionScale, mTotalMotionScale );//大きさ
+            //glTranslatef(10.0,0.0f,0.0f);//移動
+            gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 80, 100 ) );//実体
         gl::popMatrices();
         
-        //右目
-        gl::pushMatrices();
-        //setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x-defEyeTransX,
-                     mTotalMotionTranslation.y+defEyeTransY,
-                     mTotalMotionTranslation.z+defEyeTransZ);//位置
-        glRotatef(rightEyeAngle, 1.0f, 0.0f, 0.0f);//回転
-        glScalef( mTotalMotionScale2/5, mTotalMotionScale2/10, mTotalMotionScale2/10 );//大きさ
-        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
-        gl::popMatrices();
-        
-        //左目
-        gl::pushMatrices();
-        //setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defEyeTransX,
-                     mTotalMotionTranslation.y+defEyeTransY,
-                     mTotalMotionTranslation.z+defEyeTransZ);//位置
-        glRotatef(leftEyeAngle, 1.0f, 0.0f, 0.0f);//回転
-        glScalef( mTotalMotionScale2/5, mTotalMotionScale2/10, mTotalMotionScale2/10 );//大きさ
-        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
-        gl::popMatrices();
+//        //右目
+//        gl::pushMatrices();
+//        glTranslatef(defEyeTransX,defEyeTransY,defEyeTransZ);//位置
+//        glRotatef(rightEyeAngle, 1.0f, 0.0f, 0.0f);//回転
+//        glScalef( mTotalMotionScale2/5, mTotalMotionScale2/10, mTotalMotionScale2/10 );//大きさ
+//        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
+//        gl::popMatrices();
+//        
+//        //左目
+//        gl::pushMatrices();
+//        glTranslatef(defEyeTransX,defEyeTransY,defEyeTransZ);//位置
+//        glRotatef(leftEyeAngle, 1.0f, 0.0f, 0.0f);//回転
+//        glScalef( mTotalMotionScale2/5, mTotalMotionScale2/10, mTotalMotionScale2/10 );//大きさ
+//        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
+//        gl::popMatrices();
         
         //元に戻す
         rightEyeAngle = 0.0;//右目の角度
@@ -178,96 +250,63 @@ public:
         defEyeTransY = 20.0;//右目の角度
         defEyeTransZ = 100.0;//左目の角度
         
-        //口を描く
-        gl::pushMatrices();
-        glPointSize(10);
-        glLineWidth(10);
-        glBegin(GL_LINE_STRIP);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glVertex3d(mTotalMotionTranslation.x-20, mTotalMotionTranslation.y + 0, mTotalMotionTranslation.z +defMouseTransZ);
-        glVertex3d(mTotalMotionTranslation.x + 0, mTotalMotionTranslation.y-30, mTotalMotionTranslation.z +defMouseTransZ);
-        glVertex3d(mTotalMotionTranslation.x + 20, mTotalMotionTranslation.y + 0, mTotalMotionTranslation.z +defMouseTransZ);
-        glEnd();
-        gl::popMatrices();
-        
         //胴体を描く
         gl::pushMatrices();
-        setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defBodyTransX,
-                     mTotalMotionTranslation.y+defBodyTransY,
-                     mTotalMotionTranslation.z+defBodyTransZ);//移動
-        glScalef( mTotalMotionScale, mTotalMotionScale, mTotalMotionScale );//大きさ
-        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
+            glTranslatef(defBodyTransX,defBodyTransY,defBodyTransZ);//移動
+            glScalef( mTotalMotionScale, mTotalMotionScale, mTotalMotionScale );//大きさ
+            gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
         gl::popMatrices();
         
         //右腕を描く
         gl::pushMatrices();
-        setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defBodyTransX+75,
-                     mTotalMotionTranslation.y+defBodyTransY,
-                     mTotalMotionTranslation.z+defBodyTransZ);//移動
-        glRotatef(mRotateMatrix2, 1.0f, 1.0f, 0.0f);//回転
-        glTranslatef( mTotalMotionTranslation.x/10.0,
-                     mTotalMotionTranslation.y/10.0,
-                     0.0f);//移動
-        glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
+            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
+            glTranslatef(defRightArmTransX,defArmTransY,defArmTransZ);//移動
+            glRotatef(mRotateMatrix2, 1.0f, 1.0f, 0.0f);//回転
+            //glTranslatef( mTotalMotionTranslation.x/10.0,mTotalMotionTranslation.y/10.0,0.0f);//移動
+            glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100,  50, 50 ) );//実体
         
-        //二個目
-        glTranslatef( defBodyTransX+85,0.0f,0.0f);//移動
-        glRotatef(mRotateMatrix2, 1.0f, 1.0f, 0.0f);//回転
-        glTranslatef( mTotalMotionTranslation.x/10.0,
-                     mTotalMotionTranslation.y/10.0,
-                     0.0f);//移動
-        // glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
-        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 50,  50, 50 ) );//実体
+//        //二個目
+//        glTranslatef( defBodyTransX+85,0.0f,0.0f);//移動
+//        glRotatef(mRotateMatrix2, 1.0f, 1.0f, 0.0f);//回転
+//        glTranslatef(10.0,10.0,0.0f);//移動
+//        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 50,  50, 50 ) );//実体
         gl::popMatrices();
         
         //左腕を描く
         gl::pushMatrices();
-        setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defBodyTransX-75,
-                     mTotalMotionTranslation.y+defBodyTransY,
-                     mTotalMotionTranslation.z+defBodyTransZ);//移動
-        glRotatef(-mRotateMatrix4, -1.0f, 1.0f, 0.0f);//回転
-        glTranslatef( -mTotalMotionTranslation.x/10.0,
-                     mTotalMotionTranslation.y/10.0,
-                     0.0f);//移動
-        glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
+            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
+            glTranslatef(defLeftArmTransX,defArmTransY,defArmTransZ);//移動
+            glRotatef(-mRotateMatrix4, -1.0f, 1.0f, 0.0f);//回転
+            //glTranslatef(10.0,10.0,0.0f);//移動
+            glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 50, 50 ) );//実体
         //二個目
-        glTranslatef(defBodyTransX-85,0.0f,0.0f);//移動
-        glRotatef(-mRotateMatrix4, -1.0f, 1.0f, 0.0f);//回転
-        glTranslatef( -mTotalMotionTranslation.x/10.0,
-                     mTotalMotionTranslation.y/10.0,
-                     0.0f);//移動
-        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 50, 50, 50 ) );//実体
+//        glTranslatef(defBodyTransX-85,0.0f,0.0f);//移動
+//        glRotatef(-mRotateMatrix4, -1.0f, 1.0f, 0.0f);//回転
+//        glTranslatef(10.0,10.0,0.0f);//移動
+//        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 50, 50, 50 ) );//実体
         gl::popMatrices();
         
         //右足を描く
         gl::pushMatrices();
-        setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defBodyTransX+25,
-                     mTotalMotionTranslation.y+defBodyTransY-75,
-                     mTotalMotionTranslation.z+defBodyTransZ);//移動
-        glRotatef(mRotateMatrix0, 1.0f, 0.0f, 0.0f);//回転
-        glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
-        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
+            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
+            glTranslatef(defBodyTransX+25,defBodyTransY-75,defBodyTransZ);//移動
+            glRotatef(mRotateMatrix0, 1.0f, 0.0f, 0.0f);//回転
+            glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
+            gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
         gl::popMatrices();
         
         //左足を描く
         gl::pushMatrices();
-        setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-        glTranslatef( mTotalMotionTranslation.x+defBodyTransX-25,
-                     mTotalMotionTranslation.y+defBodyTransY-75,
-                     mTotalMotionTranslation.z+defBodyTransZ);//移動
-        glRotatef(mRotateMatrix5, 1.0f, 0.0f, 0.0f);//回転
-        glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
-        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
+            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
+            glTranslatef(defBodyTransX-25,defBodyTransY-75,defBodyTransZ);//移動
+            glRotatef(mRotateMatrix5, 1.0f, 0.0f, 0.0f);//回転
+            glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
+            gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
         gl::popMatrices();
         
     }
-    //ジェスチャー
     //メッセージリスト
     void drawListArea(){
         stringstream mm;
@@ -278,6 +317,41 @@ public:
         gl::popMatrices();
     }
     
+    //サークル
+    void drawCircle(){
+        //sine, cosineを使った曲線的な拡大縮小///////////////////////////
+        //この場合-A*sin(w*radians(t) - p)の計算結果は100.0~-100.0なので、
+        //100を足すことによって、0~200にしている。
+        
+        y = A*sin(w*(t * PI / 180.0) - p) + 100;
+
+        pushMatrices();
+        gl::drawSphere(Vec3f( 360, 675, -300 ), y, y );//指の位置
+        popMatrices();
+        t += speed1;    //時間を進める
+        if(t > 360.0) t = 0.0;
+        
+        //sine, cosineを使わない直線的な拡大縮小(2D)///////////////////////////
+//        eSize += speed2;
+//        if(eSize > 100 || eSize < 0) speed2 = -speed2;
+//        pushMatrices();
+//        gl::drawSolidCircle( Vec2f( -100,100 ), eSize, eSize );//指の位置
+//        popMatrices();
+    }
+    
+    void drawPainting(){
+        
+        // 表示座標系の保持
+        gl::pushMatrices();
+        
+        // カメラ位置を設定する
+        gl::setMatrices( mMayaCam.getCamera() );
+        
+        // 描画
+        mPaint.draw();
+        gl::popMatrices();
+        
+    }
     // テクスチャの描画
     void drawTexture(int x, int y){
         
@@ -315,15 +389,6 @@ public:
     //フォント
     Font mFont;
     
-    //ここ消したらスレッドが止まる！！
-    // Leap Motion
-    Leap::Controller mLeap;//ジェスチャーの有効化など...
-    Leap::Frame mCurrentFrame;//現在
-    Leap::Frame mLastFrame;//最新
-    
-    Leap::Matrix mRotationMatrix;//回転
-    Leap::Vector mTotalMotionTranslation;//移動
-    //ここまで
     
     float mRotateMatrix0;//親指（向かって右足）の回転
     float mRotateMatrix2;//人さし指（向かって右腕）の回転
@@ -331,64 +396,68 @@ public:
     float mRotateMatrix4;//薬指（向かって左腕）の回転
     float mRotateMatrix5;//小指（向かって左足）の回転
     
-    //ジェスチャーのための変数追加
-    Leap::Frame lastFrame;//最後
-    
-    //ジェスチャーを取得するための変数
-    std::list<Leap::Gesture> mGestureList;
-    
-    
-    //各ジェスチャーを使用する
-    std::list<Leap::SwipeGesture> swipe;
-    std::list<Leap::CircleGesture> circle;
-    std::list<Leap::KeyTapGesture> keytap;
-    std::list<Leap::ScreenTapGesture> screentap;
     
     //パラメーター表示する時に使う
     params::InterfaceGl mParams;
-    
-    //ジェスチャーをするときに取得できる変数
-    //スワイプ
-    float mMinLenagth;//長さ
-    float mMinVelocity;//速さ
-    //サークル
-    float mMinRadius;//半径
-    float mMinArc;//弧
-    
-    //キータップ、スクリーンタップ
-    float mMinDownVelocity;//速さ
-    float mHistorySeconds;//秒数
-    float mMinDistance;//距離
+
     
     //マリオネットのための変数
     float mTotalMotionScale = 1.0f;//拡大縮小（顔）
     float mTotalMotionScale2 = 1.0f;//拡大縮小（表情）
     
-    float defFaceTransX = 0.0;//顔のx座標の位置
-    float defFaceTransY = 0.0;//顔のy座標の位置
-    float defFaceTransZ = 50.0;//顔のz座標の位置
+    //ci::Vec3f defFaceTrans(new Point3D(0.0, 120.0, 50.0));
+    float defFaceTransX = 1080.0;//顔のx座標の位置
+    float defFaceTransY = 675+110.0;//顔のy座標の位置
+    float defFaceTransZ = 0.0;//顔のz座標の位置
+    
+    float defBodyTransX = 1080.0;//体のx座標の位置
+    float defBodyTransY = 675.0;//体のy座標の位置
+    float defBodyTransZ = 0.0;//体のz座標の位置
+    
+    float defLeftArmTransX=1080.0+75.0;
+    float defRightArmTransX=1080.0-75.0;
+    float defArmTransY=675+20.0;
+    float defArmTransZ=0.0;
+
     float rightEyeAngle = 0.0;//右目の角度
     float leftEyeAngle = 0.0;//左目の角度
     float defEyeTransX = 20.0;//右目のx座標の位置
-    float defEyeTransY = 20.0;//右目のy座標の位置
+    float defEyeTransY = 120.0;//右目のy座標の位置
     float defEyeTransZ = 0.0;//左目のz座標の位置
-    float defBodyTransX = 0.0;//体のx座標の位置
-    float defBodyTransY = -100.0;//体のy座標の位置
-    float defBodyTransZ = 50.0;//体のz座標の位置
-    float defMouseTransZ = 110.0;//口のz座標の位置
     
-    //InteractionBoxの実装
-    Leap::InteractionBox iBox;
+    float defMouseTransZ = 0.0;//口のz座標の位置
+    ci::Vec3f mTotalMotionTranslation;//移動
     
-    float mLeft;//左の壁
-    float mRight;//右の壁
-    float mTop;//雲
-    float mBaottom;//底
-    float mBackSide;//背面
-    float mFrontSide;//正面
-    //ddd
     //メッセージを取得する時に使う
     int messageNumber = -1;
+
+    Paint mPaint;
+
+
+    float x, y;  //x, y座標
+    float A;  //振幅
+    float w;  //角周波数
+    float p;  //初期位相
+    float t;  //経過時間
+    float speed1 = 1.0;    //アニメーションの基準となるスピード
+    float speed2 = 1.0;
+    float eSize = 0.0;
+
+    Leap::Controller mLeap;
+
+    
+    // declare our variables
+    Capture	        mCapture;
+    gl::Texture		imgTexture;
+    
+   
+    // CAMERA Controls
+    CameraPersp mCamPrep;
+    Quatf				mSceneRotation;
+    float				mCameraDistance;
+    Vec3f				mEye, mCenter, mUp;
+    
+    
 };
 CINDER_APP_NATIVE( LeapApp, RendererGl )
 
@@ -421,6 +490,7 @@ void socketSv(){
     n = write(newsockfd,"I got your message",18);
     if (n < 0) error("ERROR writing to socket");
     close(newsockfd);
+    
 }
 
 void *socketSv_loop(void *p){

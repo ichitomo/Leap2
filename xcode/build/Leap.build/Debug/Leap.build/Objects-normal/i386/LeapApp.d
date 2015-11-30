@@ -6,6 +6,7 @@ dependencies: /Users/ichinosetomohiro/Desktop/Leap2/src/LeapApp.cpp \
   ../../cinder_0.8.6_mac/include/cinder/Camera.h \
   /Users/ichinosetomohiro/Desktop/Leap2/include/Leap.h \
   ../include/LeapMath.h \
+  /Users/ichinosetomohiro/Desktop/Leap2/xcode/Paint.h \
   ../../cinder_0.8.6_mac/include/cinder/params/Params.h \
   ../../cinder_0.8.6_mac/include/cinder/ObjLoader.h \
   ../../cinder_0.8.6_mac/include/cinder/TriMesh.h \
@@ -146,4 +147,5 @@ dependencies: /Users/ichinosetomohiro/Desktop/Leap2/src/LeapApp.cpp \
   ../../cinder_0.8.6_mac/boost/boost/predef/os/bsd/net.h \
   ../../cinder_0.8.6_mac/boost/boost/math/special_functions/fpclassify.hpp \
   ../../cinder_0.8.6_mac/boost/boost/math/tools/real_cast.hpp \
-  ../../cinder_0.8.6_mac/boost/boost/container/container_fwd.hpp
+  ../../cinder_0.8.6_mac/boost/boost/container/container_fwd.hpp \
+  ../../cinder_0.8.6_mac/include/cinder/Capture.h
