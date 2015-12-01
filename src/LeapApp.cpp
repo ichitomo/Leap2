@@ -15,6 +15,7 @@
 #include <math.h>
 #include "cinder/Capture.h"
 #include "cinder/params/Params.h"
+#include "time.h"
 
 //音声解析
 #include "cinder/gl/TextureFont.h"
@@ -45,6 +46,8 @@ using namespace cinder::audio;
 
 #define PI 3.141592653589793
 
+#define MAXPOINTS 100//記録できる点の限度
+GLint point[MAXPOINTS][2];//点の座標の入れ物
 void error(const char *msg){
     //エラーメッセージ
     perror(msg);
@@ -90,10 +93,10 @@ public:
         
         
         mCameraDistance = 1500.0f;//カメラの距離（z座標）
-        mEye			= Vec3f( 750.0f, 450.0f, mCameraDistance );//位置
-        mCenter			= Vec3f( 750.0f, 450.0f, 0.0f);//カメラのみる先
+        mEye			= Vec3f( getWindowWidth()/2, getWindowHeight()/2, mCameraDistance );//位置
+        mCenter			= Vec3f( getWindowWidth()/2, getWindowHeight()/2, 0.0f);//カメラのみる先
         //mUp				= Vec3f::yAxis();//頭の方向を表すベクトル
-        mCam.setEyePoint( Vec3f( 750.0f, 450.0f, mCameraDistance ) );//カメラの位置
+        mCam.setEyePoint( mEye );//カメラの位置
         mCam.setCenterOfInterestPoint(mCenter);//カメラのみる先
         //(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar)
         //fozyはカメラの画角、値が大きいほど透視が強くなり、絵が小さくなる
@@ -167,8 +170,8 @@ public:
     // マウスのクリック
     void mouseDown( MouseEvent event ){
         mMayaCam.mouseDown( event.getPos() );
-        if( mSpectrumPlot.getBounds().contains( event.getPos() ) )
-            drawPrintBinInfo( event.getX() );
+//        if( mSpectrumPlot.getBounds().contains( event.getPos() ) )
+//            drawPrintBinInfo( event.getX() );
     }
     
     // マウスのドラッグ
@@ -194,6 +197,10 @@ public:
     }
     // 更新処理
     void update(){
+        // フレームの更新
+        mLastFrame = mCurrentFrame;
+        mCurrentFrame = mLeap.frame();
+        
         //お絵かきモードのアップデート処理
         mPaint.update();
         //カメラのアップデート処理
@@ -213,6 +220,8 @@ public:
         
         //アップデートごとに一度、メインスレッド上でノードから振幅スペクトルをコピーします。
         mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
+        
+        graphUpdate();
     }
     
     //描写処理
@@ -238,12 +247,13 @@ public:
 
         gl::pushMatrices();// カメラ位置を設定する
             gl::setMatrices( mMayaCam.getCamera() );
-            drawPainting();//指の軌跡を描く
             drawMarionette();//マリオネット描写
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
-            drawAudioAnalyze();//音声解析の描写
+            //drawPainting();//指の軌跡を描く
+            //drawAudioAnalyze();//音声解析の描写
             drawSinGraph();//sinグラフを描く
+            drawStickGraph();
         gl::popMatrices();
         
         // パラメーター設定UIを描画する
@@ -402,23 +412,27 @@ public:
     //sinグラフを描く
     void drawSinGraph(){
         
+        glPushMatrix();
+        gl::setMatrices( mMayaCam.getCamera() );
         drawGrid();  //基準線
         //サイン波を点で静止画として描画///////////////////////////
         for (t1 = 0.0; t1 < WindowWidth; t1 += speed) {
-            y = -A*sin(w*(t1 * PI / 180.0) - p);    //processingのy座標は数学の座標と反対のため、-にする
+            y = A*sin(w*(t1 * PI / 180.0) - p);
             drawSolidCircle(Vec2f(t1, y + WindowHeight/2), 1);  //円を描く
         }
         
         //点のアニメーションを描画////////////////////////////////
-        y = -A*sin(w*(t2 * PI / 180.0) - p);    //processingのy座標は数学の座標と反対のため、-にする
+        y = A*sin(w*(t2 * PI / 180.0) - p);
         drawSolidCircle(Vec2f(t2, y + WindowHeight/2), 10);  //円を描く
         
         t2 += speed;    //時間を進める
         if (t2 > WindowWidth) t2 = 0.0;    //点が右端まで行ったらになったら原点に戻る
-        
+        glPopMatrix();
         
     }
     void drawGrid(){
+        glPushMatrix();
+        gl::setMatrices( mMayaCam.getCamera() );
         //横線
         glBegin(GL_LINES);
         glVertex2d(WindowWidth/2, 0);
@@ -429,18 +443,44 @@ public:
         glVertex2d(0, WindowHeight/2);
         glVertex2d(WindowWidth, WindowHeight/2);
         glEnd();
+        glPopMatrix();
+    }
+    void graphUpdate(){
+        //時間が１秒経つごとに座標を配列に記録していく
+        if (time(&next) != last){
+            last = next;
+            pastSec++;
+            printf("%d 秒経過\n", pastSec);
+            point[pastSec][0]=pastSec;
+            point[pastSec][1]=mCurrentFrame.hands().count();
+            pointt.x=pastSec;
+            pointt.y=mCurrentFrame.hands().count();
+        }
     }
     
-    //手を描く
-    void drawHand(){}
-    
-    
-    
+    void drawStickGraph(){
+        for (int j = 0; j < pastSec; j++) {
+            std::cout << "点の数" << pastSec*2 << "\n"
+            << "point[" << j << "][0]の値: " << point[j][0] << "\n "
+            << "point[" << j << "][1]の値: " << point[j][1] << "\n "
+            << "jの値: " << j << "\n "
+            << std::endl;
+            glPushMatrix();
+            glBegin(GL_LINE_STRIP);
+            glColor3d(1.0, 0.0, 0.0);
+            glLineWidth(10);
+            glVertex2d(point[j][0]*10, 0);//x座標
+            glVertex2d(point[j][0]*10 , point[j][1]*100);//y座標
+            glEnd();
+            glPopMatrix();
+
+        }
+    }
     //音声解析の描写
-    void drawAudioAnalyze(){
+    /*void drawAudioAnalyze(){
         glPushMatrix();
         mSpectrumPlot.draw( mMagSpectrum );
-        drawLabels();
+        //drawLabels();
         glPopMatrix();
     }
     
@@ -473,9 +513,7 @@ public:
 //        console() << "bin: " << bin << ", freqency (hertz): " << freq << " - " << freq + binFreqWidth << ", magnitude (decibels): " << mag << endl;
         
     }
-    
-    
-    
+    */
     // テクスチャの描画
     void drawTexture(int x, int y){
         
@@ -556,8 +594,8 @@ public:
     int messageNumber = -1;
 
     Paint mPaint;
-
-
+    Vec2i pointt;//グラフを描写するための座標
+    
     float x, y;  //x, y座標
     float A;  //振幅
     float w;  //角周波数
@@ -573,7 +611,10 @@ public:
     
     
     Leap::Controller mLeap;
-
+    Leap::Frame mCurrentFrame;//現在のフレーム
+    Leap::Frame mLastFrame;//最新のフレーム
+    Leap::Hand hand;
+    
     
     // declare our variables
     Capture	        mCapture;
@@ -594,6 +635,10 @@ public:
     SpectrumPlot					mSpectrumPlot;
     gl::TextureFontRef				mTextureFont;
     
+    //タイマー
+    time_t last = time(0);
+    time_t next;
+    int pastSec = 0;
     
 };
 CINDER_APP_NATIVE( LeapApp, RendererGl )
