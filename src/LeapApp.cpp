@@ -283,29 +283,6 @@ public:
             gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 80, 100 ) );//実体
         gl::popMatrices();
         
-//        //右目
-//        gl::pushMatrices();
-//        glTranslatef(defEyeTransX,defEyeTransY,defEyeTransZ);//位置
-//        glRotatef(rightEyeAngle, 1.0f, 0.0f, 0.0f);//回転
-//        glScalef( mTotalMotionScale2/5, mTotalMotionScale2/10, mTotalMotionScale2/10 );//大きさ
-//        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
-//        gl::popMatrices();
-//        
-//        //左目
-//        gl::pushMatrices();
-//        glTranslatef(defEyeTransX,defEyeTransY,defEyeTransZ);//位置
-//        glRotatef(leftEyeAngle, 1.0f, 0.0f, 0.0f);//回転
-//        glScalef( mTotalMotionScale2/5, mTotalMotionScale2/10, mTotalMotionScale2/10 );//大きさ
-//        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
-//        gl::popMatrices();
-        
-        //元に戻す
-        rightEyeAngle = 0.0;//右目の角度
-        leftEyeAngle = 0.0;//左目の角度
-        defEyeTransX = 20.0;//右目の角度
-        defEyeTransY = 20.0;//右目の角度
-        defEyeTransZ = 100.0;//左目の角度
-        
         //胴体を描く
         gl::pushMatrices();
             glTranslatef(defBodyTransX,defBodyTransY,defBodyTransZ);//移動
@@ -321,12 +298,6 @@ public:
             //glTranslatef( mTotalMotionTranslation.x/10.0,mTotalMotionTranslation.y/10.0,0.0f);//移動
             glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100,  50, 50 ) );//実体
-        
-//        //二個目
-//        glTranslatef( defBodyTransX+85,0.0f,0.0f);//移動
-//        glRotatef(mRotateMatrix2, 1.0f, 1.0f, 0.0f);//回転
-//        glTranslatef(10.0,10.0,0.0f);//移動
-//        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 50,  50, 50 ) );//実体
         gl::popMatrices();
         
         //左腕を描く
@@ -337,11 +308,6 @@ public:
             //glTranslatef(10.0,10.0,0.0f);//移動
             glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
         gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 50, 50 ) );//実体
-        //二個目
-//        glTranslatef(defBodyTransX-85,0.0f,0.0f);//移動
-//        glRotatef(-mRotateMatrix4, -1.0f, 1.0f, 0.0f);//回転
-//        glTranslatef(10.0,10.0,0.0f);//移動
-//        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 50, 50, 50 ) );//実体
         gl::popMatrices();
         
         //右足を描く
