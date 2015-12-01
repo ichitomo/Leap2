@@ -245,6 +245,8 @@ public:
         gl::enableDepthRead();
         gl::enableDepthWrite();
 
+        gl::pushMatrices();
+        gl::popMatrices();
         gl::pushMatrices();// カメラ位置を設定する
             gl::setMatrices( mMayaCam.getCamera() );
             drawMarionette();//マリオネット描写
@@ -254,6 +256,7 @@ public:
             //drawAudioAnalyze();//音声解析の描写
             drawSinGraph();//sinグラフを描く
             drawStickGraph();
+            drawBox();
         gl::popMatrices();
         
         // パラメーター設定UIを描画する
@@ -347,9 +350,9 @@ public:
         
         y = A*sin(w*(t * PI / 180.0) - p) + 100;
 
-        pushMatrices();
+        gl::pushMatrices();
         gl::drawSphere(Vec3f( 360, 675, -300 ), y, y );//指の位置
-        popMatrices();
+        gl::popMatrices();
         t += speed1;    //時間を進める
         if(t > 360.0) t = 0.0;
         
@@ -411,6 +414,7 @@ public:
         glEnd();
         glPopMatrix();
     }
+    //時間ごとに座標を記録する関数
     void graphUpdate(){
         //時間が１秒経つごとに座標を配列に記録していく
         if (time(&next) != last){
@@ -423,25 +427,64 @@ public:
             pointt.y=mCurrentFrame.hands().count();
         }
     }
-    
+    //棒グラフを描く
     void drawStickGraph(){
-        for (int j = 0; j < pastSec; j++) {
-            std::cout << "点の数" << pastSec*2 << "\n"
-            << "point[" << j << "][0]の値: " << point[j][0] << "\n "
-            << "point[" << j << "][1]の値: " << point[j][1] << "\n "
-            << "jの値: " << j << "\n "
-            << std::endl;
+        for (int i = 0; i < pastSec; i++) {
+            //棒グラフを描写していく
             glPushMatrix();
-            glBegin(GL_LINE_STRIP);
-            glColor3d(1.0, 0.0, 0.0);
-            glLineWidth(10);
-            glVertex2d(point[j][0]*10, 0);//x座標
-            glVertex2d(point[j][0]*10 , point[j][1]*100);//y座標
-            glEnd();
+                glBegin(GL_LINE_STRIP);
+                glColor3d(1.0, 0.0, 0.0);
+                glLineWidth(10);
+                glVertex2d(point[i][0]*10, 0);//x座標
+                glVertex2d(point[i][0]*10 , point[i][1]*100);//y座標
+                glEnd();
             glPopMatrix();
-
+            
         }
     }
+    //枠としてのBoxを描く
+    void drawBox(){
+        // 上面
+        gl::drawLine( Vec3f( mLeft, mTop, mBackSide ),
+                     Vec3f( mRight, mTop, mBackSide ) );
+        
+        gl::drawLine( Vec3f( mRight, mTop, mBackSide ),
+                     Vec3f( mRight, mTop, mFrontSide ) );
+        
+        gl::drawLine( Vec3f( mRight, mTop, mFrontSide ),
+                     Vec3f( mLeft, mTop, mFrontSide ) );
+        
+        gl::drawLine( Vec3f( mLeft, mTop, mFrontSide ),
+                     Vec3f( mLeft, mTop, mBackSide ) );
+        
+        // 下面
+        gl::drawLine( Vec3f( mLeft, mBottom, mBackSide ),
+                     Vec3f( mRight, mBottom, mBackSide ) );
+        
+        gl::drawLine( Vec3f( mRight, mBottom, mBackSide ),
+                     Vec3f( mRight, mBottom, mFrontSide ) );
+        
+        gl::drawLine( Vec3f( mRight, mBottom, mFrontSide ),
+                     Vec3f( mLeft, mBottom, mFrontSide ) );
+        
+        gl::drawLine( Vec3f( mLeft, mBottom, mFrontSide ),
+                     Vec3f( mLeft, mBottom, mBackSide ) );
+        
+        // 側面
+        gl::drawLine( Vec3f( mLeft, mTop, mFrontSide ),
+                     Vec3f( mLeft, mBottom, mFrontSide ) );
+        
+        gl::drawLine( Vec3f( mLeft, mTop, mBackSide ),
+                     Vec3f( mLeft, mBottom, mBackSide ) );
+        
+        gl::drawLine( Vec3f( mRight, mTop, mFrontSide ),
+                     Vec3f( mRight, mBottom, mFrontSide ) );
+        
+        gl::drawLine( Vec3f( mRight, mTop, mBackSide ),
+                     Vec3f( mRight, mBottom, mBackSide ) );
+    
+    }
+    
     //音声解析の描写
     /*void drawAudioAnalyze(){
         glPushMatrix();
@@ -605,6 +648,14 @@ public:
     time_t last = time(0);
     time_t next;
     int pastSec = 0;
+    
+    //Boxのための変数
+    float mLeft = 0.0;//左角のx座標
+    float mRight = 1440.0;//右角のx座標
+    float mTop = 900.0;//上面のy座標
+    float mBottom = 0.0;//下面のy座標
+    float mBackSide = 500.0;//前面のz座標
+    float mFrontSide = -500.0;//後面のz座標
     
 };
 CINDER_APP_NATIVE( LeapApp, RendererGl )
