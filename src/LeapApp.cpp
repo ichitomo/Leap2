@@ -457,6 +457,44 @@ public:
         gl::drawLine( Vec3f( mLeft, mTop, mFrontSide ),
                      Vec3f( mLeft, mTop, mBackSide ) );
         
+//        //2/3面
+//        gl::drawLine( Vec3f( mLeft, mTop*2/3, mBackSide ),
+//                     Vec3f( mRight, mTop*2/3, mBackSide ) );
+//        
+//        gl::drawLine( Vec3f( mRight, mTop*2/3, mBackSide ),
+//                     Vec3f( mRight, mTop*2/3, mFrontSide ) );
+//        
+//        gl::drawLine( Vec3f( mRight, mTop*2/3, mFrontSide ),
+//                     Vec3f( mLeft, mTop*2/3, mFrontSide ) );
+//        
+//        gl::drawLine( Vec3f( mLeft, mTop*2/3, mFrontSide ),
+//                     Vec3f( mLeft, mTop*2/3, mBackSide ) );
+//        
+        // 中面
+        gl::drawLine( Vec3f( mLeft, mTop/2, mBackSide ),
+                     Vec3f( mRight, mTop/2, mBackSide ) );
+        
+        gl::drawLine( Vec3f( mRight, mTop/2, mBackSide ),
+                     Vec3f( mRight, mTop/2, mFrontSide ) );
+        
+        gl::drawLine( Vec3f( mRight, mTop/2, mFrontSide ),
+                     Vec3f( mLeft, mTop/2, mFrontSide ) );
+        
+        gl::drawLine( Vec3f( mLeft, mTop/2, mFrontSide ),
+                     Vec3f( mLeft, mTop/2, mBackSide ) );
+        
+        
+        //中心線
+        gl::drawLine( Vec3f( mLeft, mTop/2, 0 ),
+                     Vec3f( mRight, mTop/2, 0 ) );
+
+        gl::drawLine( Vec3f( 0, mTop/2, mBackSide ),
+                     Vec3f( 0, mTop/2, mFrontSide ) );
+        
+        gl::drawLine( Vec3f( mRight/2, 0, 0 ),
+                     Vec3f( mRight/2, mTop, 0 ) );
+        
+        
         // 下面
         gl::drawLine( Vec3f( mLeft, mBottom, mBackSide ),
                      Vec3f( mRight, mBottom, mBackSide ) );
