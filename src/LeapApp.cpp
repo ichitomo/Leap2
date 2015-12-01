@@ -15,6 +15,7 @@
 #include <math.h>
 #include "cinder/Capture.h"
 #include "cinder/params/Params.h"
+#include "time.h"
 
 //音声解析
 #include "cinder/gl/TextureFont.h"
@@ -45,6 +46,8 @@ using namespace cinder::audio;
 
 #define PI 3.141592653589793
 
+#define MAXPOINTS 100//記録できる点の限度
+GLint point[MAXPOINTS][2];//点の座標の入れ物
 void error(const char *msg){
     //エラーメッセージ
     perror(msg);
@@ -167,8 +170,8 @@ public:
     // マウスのクリック
     void mouseDown( MouseEvent event ){
         mMayaCam.mouseDown( event.getPos() );
-        if( mSpectrumPlot.getBounds().contains( event.getPos() ) )
-            drawPrintBinInfo( event.getX() );
+//        if( mSpectrumPlot.getBounds().contains( event.getPos() ) )
+//            drawPrintBinInfo( event.getX() );
     }
     
     // マウスのドラッグ
@@ -194,6 +197,10 @@ public:
     }
     // 更新処理
     void update(){
+        // フレームの更新
+        mLastFrame = mCurrentFrame;
+        mCurrentFrame = mLeap.frame();
+        
         //お絵かきモードのアップデート処理
         mPaint.update();
         //カメラのアップデート処理
@@ -213,6 +220,8 @@ public:
         
         //アップデートごとに一度、メインスレッド上でノードから振幅スペクトルをコピーします。
         mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
+        
+        graphUpdate();
     }
     
     //描写処理
@@ -241,9 +250,10 @@ public:
             drawMarionette();//マリオネット描写
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
-            drawPainting();//指の軌跡を描く
-            drawAudioAnalyze();//音声解析の描写
+            //drawPainting();//指の軌跡を描く
+            //drawAudioAnalyze();//音声解析の描写
             drawSinGraph();//sinグラフを描く
+            drawStickGraph();
         gl::popMatrices();
         
         // パラメーター設定UIを描画する
@@ -435,17 +445,42 @@ public:
         glEnd();
         glPopMatrix();
     }
+    void graphUpdate(){
+        //時間が１秒経つごとに座標を配列に記録していく
+        if (time(&next) != last){
+            last = next;
+            pastSec++;
+            printf("%d 秒経過\n", pastSec);
+            point[pastSec][0]=pastSec;
+            point[pastSec][1]=mCurrentFrame.hands().count();
+            pointt.x=pastSec;
+            pointt.y=mCurrentFrame.hands().count();
+        }
+    }
     
-    //手を描く
-    void drawHand(){}
-    
-    
-    
+    void drawStickGraph(){
+        for (int j = 0; j < pastSec; j++) {
+            std::cout << "点の数" << pastSec*2 << "\n"
+            << "point[" << j << "][0]の値: " << point[j][0] << "\n "
+            << "point[" << j << "][1]の値: " << point[j][1] << "\n "
+            << "jの値: " << j << "\n "
+            << std::endl;
+            glPushMatrix();
+            glBegin(GL_LINE_STRIP);
+            glColor3d(1.0, 0.0, 0.0);
+            glLineWidth(10);
+            glVertex2d(point[j][0]*10, 0);//x座標
+            glVertex2d(point[j][0]*10 , point[j][1]*100);//y座標
+            glEnd();
+            glPopMatrix();
+
+        }
+    }
     //音声解析の描写
-    void drawAudioAnalyze(){
+    /*void drawAudioAnalyze(){
         glPushMatrix();
         mSpectrumPlot.draw( mMagSpectrum );
-        drawLabels();
+        //drawLabels();
         glPopMatrix();
     }
     
@@ -478,7 +513,7 @@ public:
 //        console() << "bin: " << bin << ", freqency (hertz): " << freq << " - " << freq + binFreqWidth << ", magnitude (decibels): " << mag << endl;
         
     }
-    
+    */
     // テクスチャの描画
     void drawTexture(int x, int y){
         
@@ -559,8 +594,8 @@ public:
     int messageNumber = -1;
 
     Paint mPaint;
-
-
+    Vec2i pointt;//グラフを描写するための座標
+    
     float x, y;  //x, y座標
     float A;  //振幅
     float w;  //角周波数
@@ -576,7 +611,10 @@ public:
     
     
     Leap::Controller mLeap;
-
+    Leap::Frame mCurrentFrame;//現在のフレーム
+    Leap::Frame mLastFrame;//最新のフレーム
+    Leap::Hand hand;
+    
     
     // declare our variables
     Capture	        mCapture;
@@ -597,6 +635,10 @@ public:
     SpectrumPlot					mSpectrumPlot;
     gl::TextureFontRef				mTextureFont;
     
+    //タイマー
+    time_t last = time(0);
+    time_t next;
+    int pastSec = 0;
     
 };
 CINDER_APP_NATIVE( LeapApp, RendererGl )
