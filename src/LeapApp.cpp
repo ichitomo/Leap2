@@ -594,8 +594,11 @@ public:
     }
     
     //ウィンドウサイズ
-    static const int WindowWidth = 1440;
-    static const int WindowHeight = 900;
+//    static const int WindowWidth = 1440;
+//    static const int WindowHeight = 900;
+
+    int WindowWidth = getWindowWidth();
+    int WindowHeight = getWindowHeight();
     
     // カメラ
     CameraPersp  mCam;
@@ -790,12 +793,4 @@ void *socketSv_loop(void *p){
 
 void readCalculations(){
     //受け取った値を計算する
-    
-    
-
-
-    
-    
-    
-    
 }
