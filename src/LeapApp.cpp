@@ -58,8 +58,21 @@ void error(const char *msg){
 int sockfd, newsockfd, portno;
 socklen_t clilen;
 char buffer[256];
+
+char handNumBuff[256];//readしてきたときの手の数
+char tapNumBuff[256];//readしてきたときのタップ回数の値
+char cirNumBuff[256];//readしてきたときのサークル回数の値
+
 struct sockaddr_in serv_addr, cli_addr;
-int n;
+int l,m,n;//readgの判定に使う
+int handCount=0;//手の数をカウントしたときのカウント
+int tapCount=0;//ジェスチャーしたときのカウント
+int cirCount=0;
+//ソケットで読み取った値の計算に使う
+int handNum = atoi(handNumBuff);//readしてきたときの手の数
+int tapNum = atoi(tapNumBuff);//readしてきたときのタップ回数の値
+int cirNum = atoi(cirNumBuff);//readしてきたときのサークル回数の値
+
 
 //socketとdrawを機能させる
 char flag[] = "9999";
@@ -245,8 +258,6 @@ public:
         gl::enableDepthRead();
         gl::enableDepthWrite();
 
-        gl::pushMatrices();
-        gl::popMatrices();
         gl::pushMatrices();// カメラ位置を設定する
             gl::setMatrices( mMayaCam.getCamera() );
             drawMarionette();//マリオネット描写
@@ -254,9 +265,9 @@ public:
             drawCircle();//サークルで表示
             //drawPainting();//指の軌跡を描く
             //drawAudioAnalyze();//音声解析の描写
-            drawSinGraph();//sinグラフを描く
-            drawStickGraph();
-            drawBox();
+            //drawSinGraph();//sinグラフを描く
+            drawBarGraph();
+            //drawBox();
         gl::popMatrices();
         
         // パラメーター設定UIを描画する
@@ -348,13 +359,13 @@ public:
         //この場合-A*sin(w*radians(t) - p)の計算結果は100.0~-100.0なので、
         //100を足すことによって、0~200にしている。
         
-        y = A*sin(w*(t * PI / 180.0) - p) + 100;
+        //y = A*sin(w*(t * PI / 180.0) - p) + 100;
 
         gl::pushMatrices();
-        gl::drawSphere(Vec3f( 360, 675, -300 ), y, y );//指の位置
+        gl::drawSphere(Vec3f( 360, 675, -300 ), cirCount,  cirCount);//指の位置
         gl::popMatrices();
-        t += speed1;    //時間を進める
-        if(t > 360.0) t = 0.0;
+//        t += speed1;    //時間を進める
+//        if(t > 360.0) t = 0.0;
         
         //sine, cosineを使わない直線的な拡大縮小(2D)///////////////////////////
 //        eSize += speed2;
@@ -422,13 +433,16 @@ public:
             pastSec++;
             printf("%d 秒経過\n", pastSec);
             point[pastSec][0]=pastSec;
-            point[pastSec][1]=mCurrentFrame.hands().count();
-            pointt.x=pastSec;
-            pointt.y=mCurrentFrame.hands().count();
+            point[pastSec][1]=handNum;
+            std::cout << "graphUpdate関数"<<"\n"
+            << "秒数：" << pastSec << "\n"
+            << "手の数：" << handNum << "\n"
+            << std::endl;
+            
         }
     }
     //棒グラフを描く
-    void drawStickGraph(){
+    void drawBarGraph(){
         for (int i = 0; i < pastSec; i++) {
             //棒グラフを描写していく
             glPushMatrix();
@@ -704,7 +718,7 @@ void setupSocketSv(){
     if (sockfd < 0)
         error("ERROR opening socket");
     bzero((char *) &serv_addr, sizeof(serv_addr));
-    portno = atoi("9999");
+    portno = 9999;
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(portno);
@@ -720,11 +734,47 @@ void socketSv(){
                        &clilen);//socketの接続待機（接続要求）
     if (newsockfd < 0)
         error("ERROR on accept");
-    bzero(buffer,256);
-    n = read(newsockfd,buffer,255);
-    if (n < 0) error("ERROR reading from socket");
-    printf("Here is the message: %s\n",buffer);
-    n = write(newsockfd,"I got your message",18);
+    bzero(handNumBuff,256);
+    bzero(tapNumBuff,256);
+    bzero(cirNumBuff,256);
+    l = read(newsockfd,handNumBuff,255);//手の数を読み込む
+    m = read(newsockfd,tapNumBuff,255);//タップされた（指を指していた)回数を読み込む
+    n = read(newsockfd,cirNumBuff,255);//円を描くジェスチャーをした回数を読み込む
+    if (l < 0){
+        error("ERROR reading from socket（手の数）");
+    }else{
+        handCount = handCount + handNum;//手の数を足していく
+        std::cout << "socketSv関数(手の数編)"<<"\n"
+        << "手の数：" << handNum << "\n"
+        << "手の数の総数：" << handCount << "\n"
+        << std::endl;
+    }
+    if (m < 0) {
+        error("ERROR reading from socket（タップ数）");
+    }else{
+        tapCount = tapCount + tapNum;
+        std::cout << "socketSv関数(タップ数編)"<<"\n"
+        << "タップの数：" << tapNum << "\n"
+        << "タップの総数：" << tapCount << "\n"
+        << std::endl;
+    }
+    if (n < 0) {
+        error("ERROR reading from socket（サークル）");
+    }else{
+        cirCount = cirCount + cirNum;
+        std::cout << "socketSv関数(サークル編)"<<"\n"
+        << "サークルの数：" << cirNum << "\n"
+        << "サークルの総数：" << cirCount << "\n"
+        << std::endl;
+    }
+    
+    printf("手の数: %s\n",handNumBuff);
+    printf("タップされた回数: %s\n",tapNumBuff);
+    printf("サークルの回数: %s\n",cirNumBuff);
+    
+    l = write(newsockfd,"I got your message:handNum",18);
+    m = write(newsockfd,"I got your message:tapBuf",18);
+    n = write(newsockfd,"I got your messagecirBuff",18);
     if (n < 0) error("ERROR writing to socket");
     close(newsockfd);
     
@@ -736,4 +786,16 @@ void *socketSv_loop(void *p){
     while(true){
         socketSv();
     }
+}
+
+void readCalculations(){
+    //受け取った値を計算する
+    
+    
+
+
+    
+    
+    
+    
 }
