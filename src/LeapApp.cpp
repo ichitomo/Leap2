@@ -11,11 +11,15 @@
 #include "cinder/params/Params.h"//パラメーターを動的に扱える
 #include "cinder/ImageIo.h"//画像を描画させたいときに使う
 #include "cinder/ObjLoader.h"//
-#include "cinder/Utilities.h"
+#include "cinder/Utilities.h"//
 #include <math.h>
 #include "cinder/Capture.h"
 #include "cinder/params/Params.h"
 #include "time.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 //音声解析
 #include "cinder/gl/TextureFont.h"
@@ -68,6 +72,10 @@ int l,m,n;//readgの判定に使う
 int handCount=0;//手の数をカウントしたときのカウント
 int tapCount=0;//ジェスチャーしたときのカウント
 int cirCount=0;
+int commaCount = 0;
+
+char *hans, *jes1, *jes2, *message;
+
 //ソケットで読み取った値の計算に使う
 int handNum = atoi(handNumBuff);//readしてきたときの手の数
 int tapNum = atoi(tapNumBuff);//readしてきたときのタップ回数の値
@@ -346,11 +354,13 @@ public:
     //メッセージリスト
     void drawListArea(){
         stringstream mm;
-        gl::pushMatrices();
-        auto tbox0 = TextBox().alignment( TextBox::LEFT ).font( mFont ).text ( buffer ).color(Color( 1.0f, 1.0f, 1.0f )).backgroundColor( ColorA( 0, 1.0f, 0, 0 ) );
-        auto mTextTexture = gl::Texture( tbox0.render() );
-        gl::draw( mTextTexture );
-        gl::popMatrices();
+        
+//        gl::pushMatrices();
+//        auto tbox0 = TextBox().alignment( TextBox::LEFT ).font( mFont ).text ( mm.str() ).color(Color( 1.0f, 1.0f, 1.0f )).backgroundColor( ColorA( 0, 1.0f, 0, 0 ) );
+//        auto mTextTexture = gl::Texture( tbox0.render() );
+//        gl::draw( mTextTexture );
+//  
+//        gl::popMatrices();
     }
     
     //サークル（手の数によって大きくなる球体の描写）
@@ -594,11 +604,8 @@ public:
     }
     
     //ウィンドウサイズ
-//    static const int WindowWidth = 1440;
-//    static const int WindowHeight = 900;
-
-    int WindowWidth = getWindowWidth();
-    int WindowHeight = getWindowHeight();
+    static const int WindowWidth = 1440;
+    static const int WindowHeight = 900;
     
     // カメラ
     CameraPersp  mCam;
@@ -680,6 +687,7 @@ public:
     Leap::Hand hand;
     
     
+    
     // declare our variables
     Capture	        mCapture;
     gl::Texture		imgTexture;
@@ -738,47 +746,26 @@ void socketSv(){
     if (newsockfd < 0)
         error("ERROR on accept");
     bzero(handNumBuff,256);
-    bzero(tapNumBuff,256);
-    bzero(cirNumBuff,256);
-    l = read(newsockfd,handNumBuff,255);//手の数を読み込む
-    m = read(newsockfd,tapNumBuff,255);//タップされた（指を指していた)回数を読み込む
-    n = read(newsockfd,cirNumBuff,255);//円を描くジェスチャーをした回数を読み込む
+
+    l = read(newsockfd,buffer,255);//手の数を読み込む
     if (l < 0){
-        error("ERROR reading from socket（手の数）");
-    }else{
-        handCount = handCount + handNum;//手の数を足していく
-        std::cout << "socketSv関数(手の数編)"<<"\n"
-        << "手の数：" << handNum << "\n"
-        << "手の数の総数：" << handCount << "\n"
-        << std::endl;
+        error("ERROR reading from socket");
     }
-    if (m < 0) {
-        error("ERROR reading from socket（タップ数）");
-    }else{
-        tapCount = tapCount + tapNum;
-        std::cout << "socketSv関数(タップ数編)"<<"\n"
-        << "タップの数：" << tapNum << "\n"
-        << "タップの総数：" << tapCount << "\n"
-        << std::endl;
-    }
-    if (n < 0) {
-        error("ERROR reading from socket（サークル）");
-    }else{
-        cirCount = cirCount + cirNum;
-        std::cout << "socketSv関数(サークル編)"<<"\n"
-        << "サークルの数：" << cirNum << "\n"
-        << "サークルの総数：" << cirCount << "\n"
-        << std::endl;
-    }
+    printf("受け取ったもの: %s\n",buffer);
+    /* 1回目の呼出し */
+    hans = strtok(buffer, ",");
+    /* 2回目以降の呼出し */
+    jes1 = strtok(NULL, ",");
+    jes2 = strtok(NULL, ",");
+    message = strtok(NULL, ",");
+    printf("hans: %s\n", hans);
+    printf("jes1: %s\n", jes1);
+    printf("jes2: %s\n", jes2);
+    printf("message: %s\n", message);
     
-    printf("手の数: %s\n",handNumBuff);
-    printf("タップされた回数: %s\n",tapNumBuff);
-    printf("サークルの回数: %s\n",cirNumBuff);
     
-    l = write(newsockfd,"I got your message:handNum",18);
-    m = write(newsockfd,"I got your message:tapBuf",18);
-    n = write(newsockfd,"I got your messagecirBuff",18);
-    if (n < 0) error("ERROR writing to socket");
+    l = write(newsockfd,"I got your message",10);
+    if (l < 0) error("ERROR writing to socket");
     close(newsockfd);
     
 }
