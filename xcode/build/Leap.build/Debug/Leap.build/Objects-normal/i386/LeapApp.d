@@ -149,6 +149,8 @@ dependencies: /Users/ichinosetomohiro/Desktop/Leap2/src/LeapApp.cpp \
   ../../cinder_0.8.6_mac/boost/boost/math/tools/real_cast.hpp \
   ../../cinder_0.8.6_mac/boost/boost/container/container_fwd.hpp \
   ../../cinder_0.8.6_mac/include/cinder/Capture.h \
+  /Users/ichinosetomohiro/Desktop/Leap2/src/../include/Resources.h \
+  ../../cinder_0.8.6_mac/include/cinder/CinderResources.h \
   ../../cinder_0.8.6_mac/include/cinder/gl/TextureFont.h \
   ../../cinder_0.8.6_mac/include/cinder/audio/Context.h \
   ../../cinder_0.8.6_mac/include/cinder/audio/Node.h \
