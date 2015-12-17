@@ -52,39 +52,52 @@ using namespace cinder::audio;
 
 #define PI 3.141592653589793
 
-#define MAXPOINTS 100//記録できる点の限度
+#define MAXPOINTS 1300//記録できる点の限度
 #define MAXCLIENTNUMBER 7//通信できるクライアントの人数
 GLint point[MAXPOINTS][2];//点の座標の入れ物
+//std::vector<std::vector<int>> point;//点の座標の入れ物
 
 //サーバー側のソケット生成をする関数
 int sockfd, newsockfd, portno = 9999;
-int pid, s;//フォーク
 socklen_t clilen;
 char buffer[256], buffer2[256];
-//int clientAddress;
-//unsigned int cliAddrLen;
-
-int clientNumber[MAXCLIENTNUMBER];//クライアントの配列
-
+//int clientNumber[MAXCLIENTNUMBER];//クライアントの配列
 struct sockaddr_in serv_addr, cli_addr;
-int l,m,n;//readgの判定に使う
+int sockaddr_in_size = sizeof(struct sockaddr_in);
+int l;//messageの判定に使う
+char *account, *hans, *jes1, *jes2, *message;//受け取ったbufferの中のものを分解するときに使う
 int handCount=0;//手の数をカウントしたときのカウント
 int tapCount=0;//ジェスチャーしたときのカウント
-int cirCount=0;//
-int commaCount = 0;
-int messageNumber;
-int sockaddr_in_size = sizeof(struct sockaddr_in);
-char *account;//受け取ったbufferの中のアカウントナンバー(char型)
+int cirCount=0;//サークルしたときのカウント数
+int messageNumber;//受け取ったメッセージの番号
 int accountNumber;//受け取ったbufferの中のアカウントナンバー(int型)
-char *hans, *jes1, *jes2, *message;
+
+char sepMessage[7];
+char *separateAccount, *separateHans, *separateJes1, *separateJes2, *separateMessageNumber;
+int sepAccount, sepHans, sepJes1, sepJes2, sepMessageNumber;
+
+
+std::vector<string> saveMessage;
 
 typedef struct{
     time_t time;
     int flag = 0;
+    int count[5];
     char msg[256];
 } messageInfo;
-
 messageInfo allMessage[7];
+
+string messageList[] = {
+    {"大きな声で"},
+    {"頑張れ！"},
+    {"もう一度説明して"},
+    {"面白い！"},
+    {"トイレに行きたい"},
+    {"わかった"},
+    {"かっこいい！"},
+    {"ゆっくり話して"},
+    {"わからない"},
+};
 
 void error(const char *msg){
     //エラーメッセージ
@@ -92,8 +105,15 @@ void error(const char *msg){
     exit(0);
 }
 
-void *socketSv_loop(void *p);
-void setMessage(messageInfo *m, char *data);
+void *socketSv_loop(void *p);//socket通信
+void setMessage(messageInfo *m, char *data);//メッセージ
+messageInfo createMessage(char *data);
+int sumOfFrag();
+void separateMessage();
+void debag(int number);
+int sumHands();
+int countMessageNumber();
+
 
 class LeapApp : public AppNative {
     
@@ -133,17 +153,10 @@ public:
         mMayaCam.setCurrentCam(mCam);
         
         gl::enableAlphaBlending();
-        
-        // SETUP PARAMS
-        mParams = params::InterfaceGl( "LearnHow", Vec2i( 200, 160 ) );
-        mParams.addParam( "Scene Rotation", &mSceneRotation, "opened=1" );
-        mParams.addSeparator();
-        mParams.addParam( "Eye Distance", &mCameraDistance, "min=50.0 max=1500.0 step=50.0 keyIncr=s keyDecr=w" );
-        
-        
+ 
         // アルファブレンディングを有効にする
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        gl::enable(GL_BLEND);
+//        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+//        gl::enable(GL_BLEND);
         
         //backgroundImageの読み込み
         //backgroundImage = gl::Texture(loadImage(loadResource("../resources/image.jpg")));
@@ -155,7 +168,6 @@ public:
         
         //スレッドを作る
         pthread_t threadSoc;
-        
         pthread_create(&threadSoc, NULL, socketSv_loop, NULL);
         
         //pthread_join(threadSoc,NULL);
@@ -171,7 +183,6 @@ public:
         mPaint.set3DMode( !mPaint.get3DMode() );
         
         //音声解析を追加
-        
         auto ctx = audio::Context::master();
         
         //入力デバイスノードを使用すると、コンテキストに特殊な方法を使用して作成しますので、プラットフォーム固有です
@@ -190,6 +201,7 @@ public:
         ctx->enable();
         
         getWindow()->setTitle( mInputDeviceNode->getDevice()->getName() );
+        
     }
     void setupSocketSv();
     void socketSv();
@@ -229,11 +241,11 @@ public:
         
         //お絵かきモードのアップデート処理
         mPaint.update();
-        //カメラのアップデート処理
-        mEye = Vec3f( 0.0f, 0.0f, mCameraDistance );//距離を変える
-        mCamPrep.lookAt( mEye, mCenter, mUp);//カメラの位置、m詰めている先の位置、カメラの頭の方向を表すベクトル
-        gl::setMatrices( mCamPrep );
-        gl::rotate( mSceneRotation );//カメラの回転
+//        //カメラのアップデート処理
+//        mEye = Vec3f( 0.0f, 0.0f, mCameraDistance );//距離を変える
+//        mCamPrep.lookAt( mEye, mCenter, mUp);//カメラの位置、m詰めている先の位置、カメラの頭の方向を表すベクトル
+//        gl::setMatrices( mCamPrep );
+//        gl::rotate( mSceneRotation );//カメラの回転
         
 
         
@@ -266,9 +278,7 @@ public:
         gl::enableDepthRead();
         gl::enableDepthWrite();
 
-        gl::pushMatrices();// カメラ位置を設定する
-            gl::setMatrices( mMayaCam.getCamera() );
-            drawMarionette();//マリオネット描写
+        gl::pushMatrices();
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
             //drawPainting();//指の軌跡を描く
@@ -276,18 +286,15 @@ public:
             //drawSinGraph();//sinグラフを描く
             drawBarGraph();
             //drawBox();
-        // パラメーター設定UIを描画する
-        mParams.draw();
-        if( imgTexture ) {
-            //バックグラウンドイメージを追加
-            gl::draw( backgroundImage, getWindowBounds());
-        }else{
-            //ロードする間にコメント
-            gl::drawString("Loading image please wait..",getWindowCenter());
-            
-        }
+            drawAccessNumber();
         gl::popMatrices();
         
+        for(int i = 0; i < sumOfFrag(); i++){
+            gl::pushMatrices();
+            translate(Vec2d(i*200,0));
+            drawMarionette();//マリオネット描写
+            gl::popMatrices();
+        }
         
     }
     
@@ -336,7 +343,7 @@ public:
         //右足を描く
         gl::pushMatrices();
             setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defBodyTransX+25,defBodyTransY-75,defBodyTransZ);//移動
+            glTranslatef(defBodyTransX+25,defBodyTransY+75,defBodyTransZ);//移動
             glRotatef(mRotateMatrix0, 1.0f, 0.0f, 0.0f);//回転
             glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
             gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
@@ -345,7 +352,7 @@ public:
         //左足を描く
         gl::pushMatrices();
             setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defBodyTransX-25,defBodyTransY-75,defBodyTransZ);//移動
+            glTranslatef(defBodyTransX-25,defBodyTransY+75,defBodyTransZ);//移動
             glRotatef(mRotateMatrix5, 1.0f, 0.0f, 0.0f);//回転
             glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
             gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
@@ -371,23 +378,24 @@ public:
         //sine, cosineを使った曲線的な拡大縮小///////////////////////////
         //この場合-A*sin(w*radians(t) - p)の計算結果は100.0~-100.0なので、
         //100を足すことによって、0~200にしている。
-        
+        int handRadius = sumHands();
         //y = A*sin(w*(t * PI / 180.0) - p) + 100;
-
+        printf("drawCircle:%d\n",handRadius * 10);
         gl::pushMatrices();
-        gl::drawSphere(Vec3f( 360, 675, -300 ), cirCount,  cirCount);//指の位置
+        gl::drawSphere(Vec3d( 360, 675, 0 ), handRadius*10);//指の位置
+        gl::drawString(toString(handRadius), Vec2d( 360, 100));
         gl::popMatrices();
 
+    }
+    void drawAccessNumber(){
+        gl::drawString("トータルアクセス数", Vec2d(1200,700));
+        gl::drawString(to_string(sumOfFrag()), Vec2d(1200,800));
     }
     //お絵かき（手の軌跡を描写する）
     void drawPainting(){
         
         // 表示座標系の保持
         gl::pushMatrices();
-        
-        // カメラ位置を設定する
-        gl::setMatrices( mMayaCam.getCamera() );
-        
         // 描画
         mPaint.draw();
         gl::popMatrices();
@@ -398,7 +406,7 @@ public:
     void drawSinGraph(){
         
         glPushMatrix();
-        gl::setMatrices( mMayaCam.getCamera() );
+       // gl::setMatrices( mMayaCam.getCamera() );
         drawGrid();  //基準線
         //サイン波を点で静止画として描画///////////////////////////
         for (t1 = 0.0; t1 < WindowWidth; t1 += speed) {
@@ -417,7 +425,7 @@ public:
     }
     void drawGrid(){
         glPushMatrix();
-        gl::setMatrices( mMayaCam.getCamera() );
+        //gl::setMatrices( mMayaCam.getCamera() );
         //横線
         glBegin(GL_LINES);
         glVertex2d(WindowWidth/2, 0);
@@ -436,13 +444,14 @@ public:
         if (time(&next) != last){
             last = next;
             pastSec++;
-            printf("%d 秒経過\n", pastSec);
+//            printf("%d 秒経過\n", pastSec);
             point[pastSec][0]=pastSec;
             point[pastSec][1]=handCount;
-            std::cout << "graphUpdate関数"<<"\n"
-            << "秒数：" << pastSec << "\n"
-            << "手の数：" << handCount << "\n"
-            << std::endl;
+            
+//            std::cout << "graphUpdate関数"<<"\n"
+//            << "秒数：" << pastSec << "\n"
+//            << "手の数：" << handCount << "\n"
+//            << std::endl;
             
         }
     }
@@ -633,19 +642,19 @@ public:
     float mTotalMotionScale2 = 1.0f;//拡大縮小（表情）
     
     //ci::Vec3f defFaceTrans(new Point3D(0.0, 120.0, 50.0));
-    float defFaceTransX = 1080.0;//顔のx座標の位置
-    float defFaceTransY = 675+110.0;//顔のy座標の位置
+    float defFaceTransX = 200.0;//顔のx座標の位置
+    float defFaceTransY = 675-110.0;//顔のy座標の位置
     float defFaceTransZ = 0.0;//顔のz座標の位置
     
-    float defBodyTransX = 1080.0;//体のx座標の位置
+    float defBodyTransX = 200.0;//体のx座標の位置
     float defBodyTransY = 675.0;//体のy座標の位置
     float defBodyTransZ = 0.0;//体のz座標の位置
     
-    float defLeftArmTransX=1080.0+75.0;
-    float defRightArmTransX=1080.0-75.0;
+    float defLeftArmTransX=200.0+75.0;
+    float defRightArmTransX=200.0-75.0;
     float defArmTransY=675+20.0;
     float defArmTransZ=0.0;
-
+    
     float rightEyeAngle = 0.0;//右目の角度
     float leftEyeAngle = 0.0;//左目の角度
     float defEyeTransX = 20.0;//右目のx座標の位置
@@ -653,7 +662,6 @@ public:
     float defEyeTransZ = 0.0;//左目のz座標の位置
     
     float defMouseTransZ = 0.0;//口のz座標の位置
-    ci::Vec3f mTotalMotionTranslation;//移動
     
     //メッセージを取得する時に使う
     int messageNumber = -1;
@@ -736,6 +744,8 @@ void setupSocketSv(){
 }
 
 void socketSv(){
+    messageInfo msgInfo;
+    
     clilen = sizeof(cli_addr);//クライアントから接続がくるまで待ち、接続がくるとこの関数を抜ける
     //socketの接続待機（接続要求）
     newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);//ソケット番号を指定、相手の情報を格納するためのsockaddr_in型の構造体へのポインターを渡す
@@ -747,7 +757,6 @@ void socketSv(){
     
     bzero(buffer,256);
     l = read(newsockfd,buffer,255);//クライアント側からデータを受信する
-    //l = recvfrom(newsockfd, buffer, strlen(buffer), 0, (struct sockaddr *)&cli_addr, &cliAddrLen);
     
     //データが読み込めなかった
     if (l < 0){
@@ -756,37 +765,20 @@ void socketSv(){
 
     //受けとったものをプリント
     printf("受け取ったもの: %s\n",buffer);
-    
-    strcpy( buffer2, buffer);
+    strcpy(buffer2, buffer);
     
     //以下は受けとったものをカンマで分解する
-    /* 1回目の呼出し */
-    account = strtok(buffer, ",");//クライアントの番号
+    account = strtok(buffer2, ",");//クライアントの番号
     accountNumber = atoi(account);//int型に変換
     
-    /* 2回目以降の呼出し */
+    msgInfo = createMessage(buffer); //受け取ったメッセージを構造体の配列に記録
+    if (msgInfo.count[4] == -1) {
+        
+    } else {
+        allMessage[accountNumber] = msgInfo;
+    }
     
-    hans = strtok(NULL, ",");//一個目のデータは手の数
-    handCount = atoi(hans);//int型に変換
-    jes1 = strtok(NULL, ",");//2個目のデータはサークルジェスチャーの回数
-    cirCount = atoi(jes1);//int型に変換
-    jes2 = strtok(NULL, ",");//3個目のデータはタップジェスチャーの回数
-    tapCount = atoi(jes2);//int型に変換
-    message = strtok(NULL, ",");//4個目のデータはメッセージナンバー
-    messageNumber = atoi(message);//int型に変換
-    
-    
-    setMessage(&allMessage[accountNumber], buffer2);
-    
-    //ちゃんと分解できているかをプリント
-    printf("hans: %s\n", hans);
-    printf("hans: %d\n", handCount);
-    printf("jes1: %s\n", jes1);
-    printf("jes2: %s\n", jes2);
-    printf("jes1: %d\n", cirCount);
-    printf("jes2: %d\n", tapCount);
-    printf("message: %s\n", message);
-    
+    debag(accountNumber);
     //メッセージが受け取れていることをクライアント側に発信
     l = write(newsockfd,"I got your message",18);
     //発信が失敗
@@ -820,3 +812,100 @@ void setMessage(messageInfo *m, char *data){
     << std::endl;
 }
 
+messageInfo createMessage(char *data){
+    messageInfo msg;
+    char m[256];
+    
+    //時間を保存する
+    msg.time = time(NULL);
+    
+    //受け取ったmessageを保存していく
+    strcpy(msg.msg, data);
+    
+    //受け取りフラグ
+    msg.flag = 1;
+    
+    /* 1回目の呼出し */
+    strcpy(m, data);
+        
+    msg.count[0] = atoi(strtok(m, ",")/*クライアントの番号*/);//int型に変換
+    for (int i = 1; i < 5; i++) {
+       msg.count[i] = atoi(strtok(NULL, ","));
+    }
+    
+    return msg;
+}
+
+
+int sumOfFrag(){
+    //アクセス数を返す関数
+    int sum =0;
+    for (int i = 0; i < 7; i++) {
+        sum = sum + allMessage[i].flag;
+    }
+    return sum;
+}
+
+
+int sumHands(){
+    int hands = 0;
+    for (int i = 0; i < 7 ; i++) {
+        if (allMessage[i].flag == 1) {
+            hands = hands + allMessage[i].count[1];
+        }
+    }
+    return hands;
+}
+
+int countMessageNumber(){
+    int sumMessageNumber[9] = {0,0,0,0,0,0,0,0,0};
+    int messageNumber = sumMessageNumber[0];
+    for (int i=0; i < 7; i++) {
+        if (allMessage[i].flag == 1) {
+            if (allMessage[i].count[4]=='0') {
+                sumMessageNumber[0]++;
+            }
+            else if (allMessage[i].count[4]=='1') {
+                sumMessageNumber[1]++;
+            }
+            else if (allMessage[i].count[4]=='2') {
+                sumMessageNumber[2]++;
+            }
+            else if (allMessage[i].count[4]=='3') {
+                sumMessageNumber[3]++;
+            }
+            else if (allMessage[i].count[4]=='4') {
+                sumMessageNumber[4]++;
+            }
+            else if (allMessage[i].count[4]=='5') {
+                sumMessageNumber[5]++;
+            }
+            else if (allMessage[i].count[4]=='6') {
+                sumMessageNumber[6]++;
+            }
+            else if (allMessage[i].count[4]=='7') {
+                sumMessageNumber[7]++;
+            }
+            else if (allMessage[i].count[4]=='8') {
+                sumMessageNumber[8]++;
+            }
+        }
+    }
+    for(int j=0; j < sizeof(sumMessageNumber); j++){
+        if(messageNumber < sumMessageNumber[j]){
+            messageNumber = j;
+        }
+    }
+    return messageNumber;
+}
+
+void debag(int number){
+        printf("時間：%ld\n", allMessage[number].time);
+        printf("フラグ：%d\n", allMessage[number].flag );
+        printf("count[0]の値：%d\n", allMessage[number].count[0]);
+        printf("count[1]の値：%d\n", allMessage[number].count[1]);
+        printf("count[2]の値：%d\n", allMessage[number].count[2]);
+        printf("count[3]の値：%d\n", allMessage[number].count[3]);
+        printf("count[4]の値：%d\n", allMessage[number].count[4]);
+  
+}
