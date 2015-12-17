@@ -753,8 +753,6 @@ void socketSv(){
     if (newsockfd < 0)
         error("ERROR on accept");
     
-    //cliAddrLen = sizeof(cli_addr);
-    
     bzero(buffer,256);
     l = read(newsockfd,buffer,255);//クライアント側からデータを受信する
     
@@ -768,22 +766,20 @@ void socketSv(){
     strcpy(buffer2, buffer);
     
     //以下は受けとったものをカンマで分解する
-    account = strtok(buffer2, ",");//クライアントの番号
-    accountNumber = atoi(account);//int型に変換
+    accountNumber = atoi(strtok(buffer2, ",")/*クライアントの番号*/);//int型に変換
     
     msgInfo = createMessage(buffer); //受け取ったメッセージを構造体の配列に記録
     if (msgInfo.count[4] == -1) {
-        
+        //msgInfo構造体count[4]の値（メッセージの番号）が-1のときはなにもしない
     } else {
-        allMessage[accountNumber] = msgInfo;
+        allMessage[accountNumber] = msgInfo;//それ以外のときはallMessageに記録
     }
+    debag(accountNumber);//記録したものをデバッグする
     
-    debag(accountNumber);
     //メッセージが受け取れていることをクライアント側に発信
     l = write(newsockfd,"I got your message",18);
     //発信が失敗
     if (l < 0) error("ERROR writing to socket");
-    
     close(newsockfd);
 }
 
@@ -794,22 +790,6 @@ void *socketSv_loop(void *p){
     while(true){
         socketSv();
     }
-}
-
-void setMessage(messageInfo *m, char *data){
-    //時間を保存する
-    m->time = time(NULL);
-    
-    //受け取ったmessageを保存していく
-    strcpy(  m->msg, data );
-    
-    //受け取りフラグ
-    m->flag = 1;
-    
-    std::cout << "タイムスタンプ：" << m->time << "\n"
-    << "受け取ったもの：" << data << "\n"
-    << "フラグの数：" << m->flag << "\n"
-    << std::endl;
 }
 
 messageInfo createMessage(char *data){
@@ -832,13 +812,12 @@ messageInfo createMessage(char *data){
     for (int i = 1; i < 5; i++) {
        msg.count[i] = atoi(strtok(NULL, ","));
     }
-    
     return msg;
 }
 
-
+//アクセス数を返す関数
 int sumOfFrag(){
-    //アクセス数を返す関数
+    
     int sum =0;
     for (int i = 0; i < 7; i++) {
         sum = sum + allMessage[i].flag;
@@ -846,7 +825,7 @@ int sumOfFrag(){
     return sum;
 }
 
-
+//送られてきた手の数を集計して、合計した値を返す関数
 int sumHands(){
     int hands = 0;
     for (int i = 0; i < 7 ; i++) {
@@ -857,10 +836,12 @@ int sumHands(){
     return hands;
 }
 
+//送られてきたメッセージの中でどれが多いかを算出し、返す関数
 int countMessageNumber(){
-    int sumMessageNumber[9] = {0,0,0,0,0,0,0,0,0};
-    int messageNumber = sumMessageNumber[0];
-    for (int i=0; i < 7; i++) {
+    int sumMessageNumber[9] = {0,0,0,0,0,0,0,0,0};//初期化
+    int messageNumber = 0;//返す値
+    //記録しているぶんのmessageの値を参照して、その要素に加えていく
+    for (int i = 0; i < 7; i++) {
         if (allMessage[i].flag == 1) {
             if (allMessage[i].count[4]=='0') {
                 sumMessageNumber[0]++;
@@ -891,7 +872,8 @@ int countMessageNumber(){
             }
         }
     }
-    for(int j=0; j < sizeof(sumMessageNumber); j++){
+    //要素数が最大の番地を求める
+    for(int j = 0; j < sizeof(sumMessageNumber); j++){
         if(messageNumber < sumMessageNumber[j]){
             messageNumber = j;
         }
@@ -899,7 +881,9 @@ int countMessageNumber(){
     return messageNumber;
 }
 
+//構造体の中身を確認するための関数
 void debag(int number){
+    //送られてきたアカウント名のデータをプリントする
         printf("時間：%ld\n", allMessage[number].time);
         printf("フラグ：%d\n", allMessage[number].flag );
         printf("count[0]の値：%d\n", allMessage[number].count[0]);
@@ -907,5 +891,4 @@ void debag(int number){
         printf("count[2]の値：%d\n", allMessage[number].count[2]);
         printf("count[3]の値：%d\n", allMessage[number].count[3]);
         printf("count[4]の値：%d\n", allMessage[number].count[4]);
-  
 }
