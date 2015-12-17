@@ -1,7 +1,6 @@
 #include "cinder/app/AppNative.h"
 #include "cinder/gl/gl.h"
 
-
 #include "cinder/gl/Texture.h"//画像を描画させたいときに使う
 #include "cinder/Text.h"
 #include "cinder/MayaCamUI.h"
@@ -11,11 +10,18 @@
 #include "cinder/params/Params.h"//パラメーターを動的に扱える
 #include "cinder/ImageIo.h"//画像を描画させたいときに使う
 #include "cinder/ObjLoader.h"//
-#include "cinder/Utilities.h"
+#include "cinder/Utilities.h"//
 #include <math.h>
 #include "cinder/Capture.h"
 #include "cinder/params/Params.h"
 #include "time.h"
+#include "../include/Resources.h"
+
+#include "string.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 
 //音声解析
 #include "cinder/gl/TextureFont.h"
@@ -46,25 +52,68 @@ using namespace cinder::audio;
 
 #define PI 3.141592653589793
 
-#define MAXPOINTS 100//記録できる点の限度
+#define MAXPOINTS 1300//記録できる点の限度
+#define MAXCLIENTNUMBER 7//通信できるクライアントの人数
 GLint point[MAXPOINTS][2];//点の座標の入れ物
+//std::vector<std::vector<int>> point;//点の座標の入れ物
+
+//サーバー側のソケット生成をする関数
+int sockfd, newsockfd, portno = 9999;
+socklen_t clilen;
+char buffer[256], buffer2[256];
+//int clientNumber[MAXCLIENTNUMBER];//クライアントの配列
+struct sockaddr_in serv_addr, cli_addr;
+int sockaddr_in_size = sizeof(struct sockaddr_in);
+int l;//messageの判定に使う
+char *account, *hans, *jes1, *jes2, *message;//受け取ったbufferの中のものを分解するときに使う
+int handCount=0;//手の数をカウントしたときのカウント
+int tapCount=0;//ジェスチャーしたときのカウント
+int cirCount=0;//サークルしたときのカウント数
+int messageNumber;//受け取ったメッセージの番号
+int accountNumber;//受け取ったbufferの中のアカウントナンバー(int型)
+
+char sepMessage[7];
+char *separateAccount, *separateHans, *separateJes1, *separateJes2, *separateMessageNumber;
+int sepAccount, sepHans, sepJes1, sepJes2, sepMessageNumber;
+
+
+std::vector<string> saveMessage;
+
+typedef struct{
+    time_t time;
+    int flag = 0;
+    int count[5];
+    char msg[256];
+} messageInfo;
+messageInfo allMessage[7];
+
+string messageList[] = {
+    {"大きな声で"},
+    {"頑張れ！"},
+    {"もう一度説明して"},
+    {"面白い！"},
+    {"トイレに行きたい"},
+    {"わかった"},
+    {"かっこいい！"},
+    {"ゆっくり話して"},
+    {"わからない"},
+};
+
 void error(const char *msg){
     //エラーメッセージ
     perror(msg);
     exit(0);
 }
 
-//サーバー側のソケット生成をする関数
-int sockfd, newsockfd, portno;
-socklen_t clilen;
-char buffer[256];
-struct sockaddr_in serv_addr, cli_addr;
-int n;
+void *socketSv_loop(void *p);//socket通信
+void setMessage(messageInfo *m, char *data);//メッセージ
+messageInfo createMessage(char *data);
+int sumOfFrag();
+void separateMessage();
+void debag(int number);
+int sumHands();
+int countMessageNumber();
 
-//socketとdrawを機能させる
-char flag[] = "9999";
-
-void *socketSv_loop(void *p);
 
 class LeapApp : public AppNative {
     
@@ -88,10 +137,6 @@ public:
         
         
         // カメラ(視点)の設定
-        mCapture = Capture(getWindowWidth(), getWindowHeight());
-        mCapture.start();
-        
-        
         mCameraDistance = 1500.0f;//カメラの距離（z座標）
         mEye			= Vec3f( getWindowWidth()/2, getWindowHeight()/2, mCameraDistance );//位置
         mCenter			= Vec3f( getWindowWidth()/2, getWindowHeight()/2, 0.0f);//カメラのみる先
@@ -108,20 +153,14 @@ public:
         mMayaCam.setCurrentCam(mCam);
         
         gl::enableAlphaBlending();
-        
-        // SETUP PARAMS
-        mParams = params::InterfaceGl( "LearnHow", Vec2i( 200, 160 ) );
-        mParams.addParam( "Scene Rotation", &mSceneRotation, "opened=1" );
-        mParams.addSeparator();
-        mParams.addParam( "Eye Distance", &mCameraDistance, "min=50.0 max=1500.0 step=50.0 keyIncr=s keyDecr=w" );
-        
-        
+ 
         // アルファブレンディングを有効にする
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        gl::enable(GL_BLEND);
+//        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+//        gl::enable(GL_BLEND);
         
         //backgroundImageの読み込み
-        backgroundImage = gl::Texture(loadImage(loadResource("../resources/image.jpg")));
+        //backgroundImage = gl::Texture(loadImage(loadResource("../resources/image.jpg")));
+        backgroundImage = gl::Texture(loadImage(loadResource(BACKGROUND)));
         
         // 描画時に奥行きの考慮を有効にする
         gl::enableDepthRead();
@@ -129,7 +168,6 @@ public:
         
         //スレッドを作る
         pthread_t threadSoc;
-        
         pthread_create(&threadSoc, NULL, socketSv_loop, NULL);
         
         //pthread_join(threadSoc,NULL);
@@ -145,7 +183,6 @@ public:
         mPaint.set3DMode( !mPaint.get3DMode() );
         
         //音声解析を追加
-        
         auto ctx = audio::Context::master();
         
         //入力デバイスノードを使用すると、コンテキストに特殊な方法を使用して作成しますので、プラットフォーム固有です
@@ -164,6 +201,7 @@ public:
         ctx->enable();
         
         getWindow()->setTitle( mInputDeviceNode->getDevice()->getName() );
+        
     }
     void setupSocketSv();
     void socketSv();
@@ -203,17 +241,13 @@ public:
         
         //お絵かきモードのアップデート処理
         mPaint.update();
-        //カメラのアップデート処理
-        mEye = Vec3f( 0.0f, 0.0f, mCameraDistance );//距離を変える
-        mCamPrep.lookAt( mEye, mCenter, mUp);//カメラの位置、m詰めている先の位置、カメラの頭の方向を表すベクトル
-        gl::setMatrices( mCamPrep );
-        gl::rotate( mSceneRotation );//カメラの回転
+//        //カメラのアップデート処理
+//        mEye = Vec3f( 0.0f, 0.0f, mCameraDistance );//距離を変える
+//        mCamPrep.lookAt( mEye, mCenter, mUp);//カメラの位置、m詰めている先の位置、カメラの頭の方向を表すベクトル
+//        gl::setMatrices( mCamPrep );
+//        gl::rotate( mSceneRotation );//カメラの回転
         
-        if( mCapture.checkNewFrame() ) {
-            imgTexture = gl::Texture(mCapture.getSurface() );
-            
-        }
-        
+
         
         //音声解析のアップデート処理
         mSpectrumPlot.setBounds( Rectf( 40, 40, (float)getWindowWidth() - 40, (float)getWindowHeight() - 40 ) );
@@ -225,20 +259,19 @@ public:
     }
     
     //描写処理
-//    void *draw(void *p){
-//        if(!buffer){
-//            gl::clear();
-//            gl::pushMatrices();// カメラ位置を設定する
-//            gl::setMatrices( mMayaCam.getCamera() );
-//            drawMarionette();//マリオネット描写
-//            drawListArea();//メッセージリストの表示
-//            gl::popMatrices();
-//            // パラメーター設定UIを描画する
-//        }
-//        return NULL;
-//    }
-
-    
+    /*
+    void *draw(void *p){
+        if(!buffer){
+            gl::clear();
+            gl::pushMatrices();// カメラ位置を設定する
+            gl::setMatrices( mMayaCam.getCamera() );
+            drawMarionette();//マリオネット描写
+            drawListArea();//メッセージリストの表示
+            gl::popMatrices();
+            // パラメーター設定UIを描画する
+        }
+        return NULL;
+    }*/
     //描写処理
     void draw(){
         gl::clear();
@@ -246,29 +279,23 @@ public:
         gl::enableDepthWrite();
 
         gl::pushMatrices();
-        gl::popMatrices();
-        gl::pushMatrices();// カメラ位置を設定する
-            gl::setMatrices( mMayaCam.getCamera() );
-            drawMarionette();//マリオネット描写
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
             //drawPainting();//指の軌跡を描く
             //drawAudioAnalyze();//音声解析の描写
-            drawSinGraph();//sinグラフを描く
-            drawStickGraph();
-            drawBox();
+            //drawSinGraph();//sinグラフを描く
+            drawBarGraph();
+            //drawBox();
+            drawAccessNumber();
         gl::popMatrices();
         
-        // パラメーター設定UIを描画する
-        mParams.draw();
-        if( imgTexture ) {
-            //バックグラウンドイメージを追加
-            gl::draw( backgroundImage, getWindowBounds());
-        }else{
-            //ロードする間にコメント
-            gl::drawString("Loading image please wait..",getWindowCenter());
-            
+        for(int i = 0; i < sumOfFrag(); i++){
+            gl::pushMatrices();
+            translate(Vec2d(i*200,0));
+            drawMarionette();//マリオネット描写
+            gl::popMatrices();
         }
+        
     }
     
     //マリオネット
@@ -316,7 +343,7 @@ public:
         //右足を描く
         gl::pushMatrices();
             setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defBodyTransX+25,defBodyTransY-75,defBodyTransZ);//移動
+            glTranslatef(defBodyTransX+25,defBodyTransY+75,defBodyTransZ);//移動
             glRotatef(mRotateMatrix0, 1.0f, 0.0f, 0.0f);//回転
             glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
             gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
@@ -325,7 +352,7 @@ public:
         //左足を描く
         gl::pushMatrices();
             setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defBodyTransX-25,defBodyTransY-75,defBodyTransZ);//移動
+            glTranslatef(defBodyTransX-25,defBodyTransY+75,defBodyTransZ);//移動
             glRotatef(mRotateMatrix5, 1.0f, 0.0f, 0.0f);//回転
             glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
             gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
@@ -334,12 +361,16 @@ public:
     }
     //メッセージリスト
     void drawListArea(){
-        stringstream mm;
-        gl::pushMatrices();
-        auto tbox0 = TextBox().alignment( TextBox::LEFT ).font( mFont ).text ( buffer ).color(Color( 1.0f, 1.0f, 1.0f )).backgroundColor( ColorA( 0, 1.0f, 0, 0 ) );
-        auto mTextTexture = gl::Texture( tbox0.render() );
-        gl::draw( mTextTexture );
-        gl::popMatrices();
+        //stringstream mm;
+//        gl::pushMatrices();
+//        auto tbox0 = TextBox().alignment( TextBox::LEFT ).font( mFont ).text ( mm.str() ).color(Color( 1.0f, 1.0f, 1.0f )).backgroundColor( ColorA( 0, 1.0f, 0, 0 ) );
+//        auto mTextTexture = gl::Texture( tbox0.render() );
+//        gl::draw( mTextTexture );
+//  
+//        gl::popMatrices();
+//        if(l < 0){
+//            gl::drawString(message, Vec2d(0,0));
+//        }
     }
     
     //サークル（手の数によって大きくなる球体の描写）
@@ -347,31 +378,24 @@ public:
         //sine, cosineを使った曲線的な拡大縮小///////////////////////////
         //この場合-A*sin(w*radians(t) - p)の計算結果は100.0~-100.0なので、
         //100を足すことによって、0~200にしている。
-        
-        y = A*sin(w*(t * PI / 180.0) - p) + 100;
-
+        int handRadius = sumHands();
+        //y = A*sin(w*(t * PI / 180.0) - p) + 100;
+        printf("drawCircle:%d\n",handRadius * 10);
         gl::pushMatrices();
-        gl::drawSphere(Vec3f( 360, 675, -300 ), y, y );//指の位置
+        gl::drawSphere(Vec3d( 360, 675, 0 ), handRadius*10);//指の位置
+        gl::drawString(toString(handRadius), Vec2d( 360, 100));
         gl::popMatrices();
-        t += speed1;    //時間を進める
-        if(t > 360.0) t = 0.0;
-        
-        //sine, cosineを使わない直線的な拡大縮小(2D)///////////////////////////
-//        eSize += speed2;
-//        if(eSize > 100 || eSize < 0) speed2 = -speed2;
-//        pushMatrices();
-//        gl::drawSolidCircle( Vec2f( -100,100 ), eSize, eSize );//指の位置
-//        popMatrices();
+
+    }
+    void drawAccessNumber(){
+        gl::drawString("トータルアクセス数", Vec2d(1200,700));
+        gl::drawString(to_string(sumOfFrag()), Vec2d(1200,800));
     }
     //お絵かき（手の軌跡を描写する）
     void drawPainting(){
         
         // 表示座標系の保持
         gl::pushMatrices();
-        
-        // カメラ位置を設定する
-        gl::setMatrices( mMayaCam.getCamera() );
-        
         // 描画
         mPaint.draw();
         gl::popMatrices();
@@ -382,7 +406,7 @@ public:
     void drawSinGraph(){
         
         glPushMatrix();
-        gl::setMatrices( mMayaCam.getCamera() );
+       // gl::setMatrices( mMayaCam.getCamera() );
         drawGrid();  //基準線
         //サイン波を点で静止画として描画///////////////////////////
         for (t1 = 0.0; t1 < WindowWidth; t1 += speed) {
@@ -401,7 +425,7 @@ public:
     }
     void drawGrid(){
         glPushMatrix();
-        gl::setMatrices( mMayaCam.getCamera() );
+        //gl::setMatrices( mMayaCam.getCamera() );
         //横線
         glBegin(GL_LINES);
         glVertex2d(WindowWidth/2, 0);
@@ -420,15 +444,19 @@ public:
         if (time(&next) != last){
             last = next;
             pastSec++;
-            printf("%d 秒経過\n", pastSec);
+//            printf("%d 秒経過\n", pastSec);
             point[pastSec][0]=pastSec;
-            point[pastSec][1]=mCurrentFrame.hands().count();
-            pointt.x=pastSec;
-            pointt.y=mCurrentFrame.hands().count();
+            point[pastSec][1]=handCount;
+            
+//            std::cout << "graphUpdate関数"<<"\n"
+//            << "秒数：" << pastSec << "\n"
+//            << "手の数：" << handCount << "\n"
+//            << std::endl;
+            
         }
     }
     //棒グラフを描く
-    void drawStickGraph(){
+    void drawBarGraph(){
         for (int i = 0; i < pastSec; i++) {
             //棒グラフを描写していく
             glPushMatrix();
@@ -598,7 +626,6 @@ public:
     //フォント
     Font mFont;
     
-    
     float mRotateMatrix0;//親指（向かって右足）の回転
     float mRotateMatrix2;//人さし指（向かって右腕）の回転
     float mRotateMatrix3;//中指（頭）の回転
@@ -615,19 +642,19 @@ public:
     float mTotalMotionScale2 = 1.0f;//拡大縮小（表情）
     
     //ci::Vec3f defFaceTrans(new Point3D(0.0, 120.0, 50.0));
-    float defFaceTransX = 1080.0;//顔のx座標の位置
-    float defFaceTransY = 675+110.0;//顔のy座標の位置
+    float defFaceTransX = 200.0;//顔のx座標の位置
+    float defFaceTransY = 675-110.0;//顔のy座標の位置
     float defFaceTransZ = 0.0;//顔のz座標の位置
     
-    float defBodyTransX = 1080.0;//体のx座標の位置
+    float defBodyTransX = 200.0;//体のx座標の位置
     float defBodyTransY = 675.0;//体のy座標の位置
     float defBodyTransZ = 0.0;//体のz座標の位置
     
-    float defLeftArmTransX=1080.0+75.0;
-    float defRightArmTransX=1080.0-75.0;
+    float defLeftArmTransX=200.0+75.0;
+    float defRightArmTransX=200.0-75.0;
     float defArmTransY=675+20.0;
     float defArmTransZ=0.0;
-
+    
     float rightEyeAngle = 0.0;//右目の角度
     float leftEyeAngle = 0.0;//左目の角度
     float defEyeTransX = 20.0;//右目のx座標の位置
@@ -635,7 +662,6 @@ public:
     float defEyeTransZ = 0.0;//左目のz座標の位置
     
     float defMouseTransZ = 0.0;//口のz座標の位置
-    ci::Vec3f mTotalMotionTranslation;//移動
     
     //メッセージを取得する時に使う
     int messageNumber = -1;
@@ -656,12 +682,10 @@ public:
     float t2;  //アニメーション用経過時間（X座標）
     float speed = 1.0;    //アニメーションのスピード
     
-    
     Leap::Controller mLeap;
     Leap::Frame mCurrentFrame;//現在のフレーム
     Leap::Frame mLastFrame;//最新のフレーム
     Leap::Hand hand;
-    
     
     // declare our variables
     Capture	        mCapture;
@@ -701,34 +725,64 @@ CINDER_APP_NATIVE( LeapApp, RendererGl )
 void setupSocketSv(){
     //ソケットの接続準備まで
     sockfd = ::socket(AF_INET, SOCK_STREAM, 0);//ソケットの生成
+    //ソケットが生成されていない
     if (sockfd < 0)
         error("ERROR opening socket");
+    
+    //ホスト情報を構造体にセット
     bzero((char *) &serv_addr, sizeof(serv_addr));
-    portno = atoi("9999");
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(portno);
+    
+    //socketにアドレスとポート番号とバインド
     if (::bind(sockfd, (struct sockaddr *) &serv_addr,
                sizeof(serv_addr)) < 0)
-        error("ERROR on binding"); //socketの登録
-    listen(sockfd,5);//ソケット接続準備
-    clilen = sizeof(cli_addr);
+        error("ERROR on binding");
+    
+    listen(sockfd,5);//ソケット接続準備(6個まで)
 }
+
 void socketSv(){
-    newsockfd = accept(sockfd,
-                       (struct sockaddr *) &cli_addr,
-                       &clilen);//socketの接続待機（接続要求）
+    messageInfo msgInfo;
+    
+    clilen = sizeof(cli_addr);//クライアントから接続がくるまで待ち、接続がくるとこの関数を抜ける
+    //socketの接続待機（接続要求）
+    newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);//ソケット番号を指定、相手の情報を格納するためのsockaddr_in型の構造体へのポインターを渡す
+    //接続失敗
     if (newsockfd < 0)
         error("ERROR on accept");
-    bzero(buffer,256);
-    n = read(newsockfd,buffer,255);
-    if (n < 0) error("ERROR reading from socket");
-    printf("Here is the message: %s\n",buffer);
-    n = write(newsockfd,"I got your message",18);
-    if (n < 0) error("ERROR writing to socket");
-    close(newsockfd);
     
+    bzero(buffer,256);
+    l = read(newsockfd,buffer,255);//クライアント側からデータを受信する
+    
+    //データが読み込めなかった
+    if (l < 0){
+        error("ERROR reading from socket");
+    }
+
+    //受けとったものをプリント
+    printf("受け取ったもの: %s\n",buffer);
+    strcpy(buffer2, buffer);
+    
+    //以下は受けとったものをカンマで分解する
+    accountNumber = atoi(strtok(buffer2, ",")/*クライアントの番号*/);//int型に変換
+    
+    msgInfo = createMessage(buffer); //受け取ったメッセージを構造体の配列に記録
+    if (msgInfo.count[4] == -1) {
+        //msgInfo構造体count[4]の値（メッセージの番号）が-1のときはなにもしない
+    } else {
+        allMessage[accountNumber] = msgInfo;//それ以外のときはallMessageに記録
+    }
+    debag(accountNumber);//記録したものをデバッグする
+    
+    //メッセージが受け取れていることをクライアント側に発信
+    l = write(newsockfd,"I got your message",18);
+    //発信が失敗
+    if (l < 0) error("ERROR writing to socket");
+    close(newsockfd);
 }
+
 
 void *socketSv_loop(void *p){
     setupSocketSv();
@@ -736,4 +790,105 @@ void *socketSv_loop(void *p){
     while(true){
         socketSv();
     }
+}
+
+messageInfo createMessage(char *data){
+    messageInfo msg;
+    char m[256];
+    
+    //時間を保存する
+    msg.time = time(NULL);
+    
+    //受け取ったmessageを保存していく
+    strcpy(msg.msg, data);
+    
+    //受け取りフラグ
+    msg.flag = 1;
+    
+    /* 1回目の呼出し */
+    strcpy(m, data);
+        
+    msg.count[0] = atoi(strtok(m, ",")/*クライアントの番号*/);//int型に変換
+    for (int i = 1; i < 5; i++) {
+       msg.count[i] = atoi(strtok(NULL, ","));
+    }
+    return msg;
+}
+
+//アクセス数を返す関数
+int sumOfFrag(){
+    
+    int sum =0;
+    for (int i = 0; i < 7; i++) {
+        sum = sum + allMessage[i].flag;
+    }
+    return sum;
+}
+
+//送られてきた手の数を集計して、合計した値を返す関数
+int sumHands(){
+    int hands = 0;
+    for (int i = 0; i < 7 ; i++) {
+        if (allMessage[i].flag == 1) {
+            hands = hands + allMessage[i].count[1];
+        }
+    }
+    return hands;
+}
+
+//送られてきたメッセージの中でどれが多いかを算出し、返す関数
+int countMessageNumber(){
+    int sumMessageNumber[9] = {0,0,0,0,0,0,0,0,0};//初期化
+    int messageNumber = 0;//返す値
+    //記録しているぶんのmessageの値を参照して、その要素に加えていく
+    for (int i = 0; i < 7; i++) {
+        if (allMessage[i].flag == 1) {
+            if (allMessage[i].count[4]=='0') {
+                sumMessageNumber[0]++;
+            }
+            else if (allMessage[i].count[4]=='1') {
+                sumMessageNumber[1]++;
+            }
+            else if (allMessage[i].count[4]=='2') {
+                sumMessageNumber[2]++;
+            }
+            else if (allMessage[i].count[4]=='3') {
+                sumMessageNumber[3]++;
+            }
+            else if (allMessage[i].count[4]=='4') {
+                sumMessageNumber[4]++;
+            }
+            else if (allMessage[i].count[4]=='5') {
+                sumMessageNumber[5]++;
+            }
+            else if (allMessage[i].count[4]=='6') {
+                sumMessageNumber[6]++;
+            }
+            else if (allMessage[i].count[4]=='7') {
+                sumMessageNumber[7]++;
+            }
+            else if (allMessage[i].count[4]=='8') {
+                sumMessageNumber[8]++;
+            }
+        }
+    }
+    //要素数が最大の番地を求める
+    for(int j = 0; j < sizeof(sumMessageNumber); j++){
+        if(messageNumber < sumMessageNumber[j]){
+            messageNumber = j;
+        }
+    }
+    return messageNumber;
+}
+
+//構造体の中身を確認するための関数
+void debag(int number){
+    //送られてきたアカウント名のデータをプリントする
+        printf("時間：%ld\n", allMessage[number].time);
+        printf("フラグ：%d\n", allMessage[number].flag );
+        printf("count[0]の値：%d\n", allMessage[number].count[0]);
+        printf("count[1]の値：%d\n", allMessage[number].count[1]);
+        printf("count[2]の値：%d\n", allMessage[number].count[2]);
+        printf("count[3]の値：%d\n", allMessage[number].count[3]);
+        printf("count[4]の値：%d\n", allMessage[number].count[4]);
 }
