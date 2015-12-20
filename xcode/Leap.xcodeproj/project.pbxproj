@@ -22,6 +22,8 @@
 		8948FFC41BD8D929001C42F1 /* android_foot.obj in Resources */ = {isa = PBXBuildFile; fileRef = 8948FFBE1BD8D929001C42F1 /* android_foot.obj */; settings = {ASSET_TAGS = (); }; };
 		8948FFC51BD8D929001C42F1 /* android_head.mtl in Resources */ = {isa = PBXBuildFile; fileRef = 8948FFBF1BD8D929001C42F1 /* android_head.mtl */; settings = {ASSET_TAGS = (); }; };
 		8948FFC61BD8D929001C42F1 /* android_head.obj in Resources */ = {isa = PBXBuildFile; fileRef = 8948FFC01BD8D929001C42F1 /* android_head.obj */; settings = {ASSET_TAGS = (); }; };
+		8974FB0B1C239F680029A1E8 /* dummy_obj.obj in Resources */ = {isa = PBXBuildFile; fileRef = 8974FB091C239F670029A1E8 /* dummy_obj.obj */; settings = {ASSET_TAGS = (); }; };
+		8974FB0C1C239F680029A1E8 /* dummy_wood.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 8974FB0A1C239F670029A1E8 /* dummy_wood.jpg */; settings = {ASSET_TAGS = (); }; };
 		898680971B37A3360007A942 /* libLeap.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 898680961B37A3360007A942 /* libLeap.dylib */; };
 		898680991B37A36C0007A942 /* libLeap.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 898680961B37A3360007A942 /* libLeap.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
@@ -67,6 +69,8 @@
 		8948FFBE1BD8D929001C42F1 /* android_foot.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = android_foot.obj; path = ../resources/android_foot.obj; sourceTree = "<group>"; };
 		8948FFBF1BD8D929001C42F1 /* android_head.mtl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = android_head.mtl; path = ../resources/android_head.mtl; sourceTree = "<group>"; };
 		8948FFC01BD8D929001C42F1 /* android_head.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = android_head.obj; path = ../resources/android_head.obj; sourceTree = "<group>"; };
+		8974FB091C239F670029A1E8 /* dummy_obj.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = dummy_obj.obj; path = ../resources/dummy_obj.obj; sourceTree = "<group>"; };
+		8974FB0A1C239F670029A1E8 /* dummy_wood.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = dummy_wood.jpg; path = ../resources/dummy_wood.jpg; sourceTree = "<group>"; };
 		898680941B37A2F90007A942 /* Leap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Leap.h; path = ../include/Leap.h; sourceTree = "<group>"; };
 		898680951B37A2F90007A942 /* LeapMath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LeapMath.h; path = ../include/LeapMath.h; sourceTree = "<group>"; };
 		898680961B37A3360007A942 /* libLeap.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libLeap.dylib; sourceTree = "<group>"; };
@@ -178,6 +182,8 @@
 				8948FFBE1BD8D929001C42F1 /* android_foot.obj */,
 				8948FFBF1BD8D929001C42F1 /* android_head.mtl */,
 				8948FFC01BD8D929001C42F1 /* android_head.obj */,
+				8974FB091C239F670029A1E8 /* dummy_obj.obj */,
+				8974FB0A1C239F670029A1E8 /* dummy_wood.jpg */,
 				84BB2BF7371E4767863296E4 /* CinderApp.icns */,
 				4E5C3383173146FDBE20C58E /* Info.plist */,
 			);
@@ -257,6 +263,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8948FFC21BD8D929001C42F1 /* android_arm.obj in Resources */,
+				8974FB0B1C239F680029A1E8 /* dummy_obj.obj in Resources */,
 				8948FFC31BD8D929001C42F1 /* android_foot.mtl in Resources */,
 				90137A2B51414E919CBC3A5C /* CinderApp.icns in Resources */,
 				8948FFC61BD8D929001C42F1 /* android_head.obj in Resources */,
@@ -264,6 +271,7 @@
 				8929D8AD1BD072D30016BF57 /* image.jpg in Resources */,
 				8948FFC11BD8D929001C42F1 /* android_arm.mtl in Resources */,
 				8948FFC41BD8D929001C42F1 /* android_foot.obj in Resources */,
+				8974FB0C1C239F680029A1E8 /* dummy_wood.jpg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

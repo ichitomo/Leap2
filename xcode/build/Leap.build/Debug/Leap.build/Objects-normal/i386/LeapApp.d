@@ -165,4 +165,5 @@ dependencies: /Users/ichinosetomohiro/Desktop/Leap2/src/LeapApp.cpp \
   ../../cinder_0.8.6_mac/include/cinder/audio/MonitorNode.h \
   ../../cinder_0.8.6_mac/include/cinder/audio/dsp/Dsp.h \
   ../../cinder_0.8.6_mac/include/cinder/audio/dsp/RingBuffer.h \
-  /Users/ichinosetomohiro/Desktop/Leap2/src/../common/AudioDrawUtils.h
+  /Users/ichinosetomohiro/Desktop/Leap2/src/../common/AudioDrawUtils.h \
+  ../../cinder_0.8.6_mac/include/cinder/gl/Vbo.h

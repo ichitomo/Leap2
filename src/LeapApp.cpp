@@ -15,6 +15,7 @@
 #include "cinder/Capture.h"
 #include "cinder/params/Params.h"
 #include "time.h"
+
 #include "../include/Resources.h"
 
 #include "string.h"
@@ -28,6 +29,10 @@
 #include "cinder/audio/Context.h"
 #include "cinder/audio/MonitorNode.h"
 #include "../common/AudioDrawUtils.h"
+
+//OBJロード
+#include "cinder/ObjLoader.h"
+#include "cinder/gl/Vbo.h"
 
 
 //ソケット通信
@@ -75,7 +80,6 @@ int accountNumber;//受け取ったbufferの中のアカウントナンバー(in
 char sepMessage[7];
 char *separateAccount, *separateHans, *separateJes1, *separateJes2, *separateMessageNumber;
 int sepAccount, sepHans, sepJes1, sepJes2, sepMessageNumber;
-
 
 std::vector<string> saveMessage;
 
@@ -143,25 +147,14 @@ public:
         //mUp				= Vec3f::yAxis();//頭の方向を表すベクトル
         mCam.setEyePoint( mEye );//カメラの位置
         mCam.setCenterOfInterestPoint(mCenter);//カメラのみる先
-        //(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar)
-        //fozyはカメラの画角、値が大きいほど透視が強くなり、絵が小さくなる
-        //getWindowAspectRatio()はアスペクト比
-        //nNearは奥行きの範囲：手前（全方面）
-        //zFarは奥行きの範囲：後方（後方面）
         mCam.setPerspective( 45.0f, getWindowAspectRatio(), 300.0f, 3000.0f );//カメラから見える視界の設定
         
         mMayaCam.setCurrentCam(mCam);
+
         
+        // アルファブレンディングを有効にする
         gl::enableAlphaBlending();
  
-        // アルファブレンディングを有効にする
-//        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-//        gl::enable(GL_BLEND);
-        
-        //backgroundImageの読み込み
-        //backgroundImage = gl::Texture(loadImage(loadResource("../resources/image.jpg")));
-        backgroundImage = gl::Texture(loadImage(loadResource(BACKGROUND)));
-        
         // 描画時に奥行きの考慮を有効にする
         gl::enableDepthRead();
         gl::enableDepthWrite();
@@ -170,8 +163,6 @@ public:
         pthread_t threadSoc;
         pthread_create(&threadSoc, NULL, socketSv_loop, NULL);
         
-        //pthread_join(threadSoc,NULL);
-        //exit(EXIT_SUCCESS);
         
         A = 100.0;    //振幅を設定
         w = 1.0;    //角周波数を設定
@@ -201,6 +192,20 @@ public:
         ctx->enable();
         
         getWindow()->setTitle( mInputDeviceNode->getDevice()->getName() );
+        
+        
+        // SETUP PARAMS
+        mParams = params::InterfaceGl( "Params", Vec2i( 200, 160 ) );//名前、サイズ
+        mParams.addParam( "Scene time",  &defArmTransY);
+        
+        //テクスチャのロード
+        objTexture = gl::Texture( loadImage( loadResource( DUMMY_IMAGE ) ) );
+        objTexture.enableAndBind();
+        //OBJファイルのロード
+        ObjLoader loader( (DataSourceRef)loadResource( DUMMY_OBJ ) );
+        loader.load( &mMesh );
+        mVBO = gl::VboMesh( mMesh );
+        
         
     }
     void setupSocketSv();
@@ -275,9 +280,8 @@ public:
     //描写処理
     void draw(){
         gl::clear();
-        gl::enableDepthRead();
-        gl::enableDepthWrite();
-
+        
+gl::setMatrices( mMayaCam.getCamera() );
         gl::pushMatrices();
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
@@ -285,10 +289,11 @@ public:
             //drawAudioAnalyze();//音声解析の描写
             //drawSinGraph();//sinグラフを描く
             drawBarGraph();
-            //drawBox();
+            drawBox();
             drawAccessNumber();
         gl::popMatrices();
         
+        //アクセス数に応じてマリオネットを表示
         for(int i = 0; i < sumOfFrag(); i++){
             gl::pushMatrices();
             translate(Vec2d(i*200,0));
@@ -296,6 +301,14 @@ public:
             gl::popMatrices();
         }
         
+        glDisable( GL_CULL_FACE );//ポリゴンの表面だけを描く
+        gl::pushMatrices();
+        objTexture.bind();
+        gl::translate(Vec3f(0,defArmTransY,0));
+        gl::draw( mVBO );
+        gl::popMatrices();
+     
+        mParams.draw();
     }
     
     //マリオネット
@@ -380,7 +393,6 @@ public:
         //100を足すことによって、0~200にしている。
         int handRadius = sumHands();
         //y = A*sin(w*(t * PI / 180.0) - p) + 100;
-        printf("drawCircle:%d\n",handRadius * 10);
         gl::pushMatrices();
         gl::drawSphere(Vec3d( 360, 675, 0 ), handRadius*10);//指の位置
         gl::drawString(toString(handRadius), Vec2d( 360, 100));
@@ -552,7 +564,7 @@ public:
     }
     
     //音声解析の描写
-    /*void drawAudioAnalyze(){
+    void drawAudioAnalyze(){
         glPushMatrix();
         mSpectrumPlot.draw( mMagSpectrum );
         //drawLabels();
@@ -588,7 +600,7 @@ public:
 //        console() << "bin: " << bin << ", freqency (hertz): " << freq << " - " << freq + binFreqWidth << ", magnitude (decibels): " << mag << endl;
         
     }
-    */
+    
     // テクスチャの描画
     void drawTexture(int x, int y){
         
@@ -718,6 +730,11 @@ public:
     float mBottom = 0.0;//下面のy座標
     float mBackSide = 500.0;//前面のz座標
     float mFrontSide = -500.0;//後面のz座標
+    
+    //OBJファイルを表示するための変数
+    TriMesh			mMesh;
+    gl::VboMesh		mVBO;
+    gl::Texture		objTexture;
     
 };
 CINDER_APP_NATIVE( LeapApp, RendererGl )
