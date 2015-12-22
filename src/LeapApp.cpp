@@ -116,6 +116,8 @@ int sumOfFrag();
 void separateMessage();
 void debag(int number);
 int sumHands();
+int sumJes1();
+int sumJes2();
 int countMessageNumber();
 
 
@@ -206,6 +208,36 @@ public:
         loader.load( &mMesh );
         mVBO = gl::VboMesh( mMesh );
         
+        ObjLoader headLoader( (DataSourceRef)loadResource( HEAD_OBJ ) );
+        headLoader.load( &mHead );
+        vHead = gl::VboMesh( mHead );
+        
+        ObjLoader arm2Loader( (DataSourceRef)loadResource( ARM2_OBJ ) );
+        arm2Loader.load( &mArm2 );
+        vArm2 = gl::VboMesh( mArm2 );
+        ObjLoader arm1Loader( (DataSourceRef)loadResource( ARM1_OBJ ) );
+        arm1Loader.load( &mArm1 );
+        vArm1 = gl::VboMesh( mArm1 );
+        ObjLoader handLoader( (DataSourceRef)loadResource( HAND_OBJ ) );
+        handLoader.load( &mHand );
+        vHand = gl::VboMesh( mHand );
+        
+        ObjLoader leftArm2Loader( (DataSourceRef)loadResource( LEFT_ARM2_OBJ ) );
+        leftArm2Loader.load( &mLeftArm2 );
+        vLeftArm2 = gl::VboMesh( mLeftArm2 );
+        ObjLoader leftArm1Loader( (DataSourceRef)loadResource( LEFT_ARM1_OBJ ) );
+        leftArm1Loader.load( &mLeftArm1 );
+        vLeftArm1 = gl::VboMesh( mLeftArm1 );
+        ObjLoader leftHandLoader( (DataSourceRef)loadResource( LEFT_HAND_OBJ ) );
+        leftHandLoader.load( &mLeftHand );
+        vLeftHand = gl::VboMesh( mLeftHand );
+        
+        ObjLoader bodyLoader( (DataSourceRef)loadResource( BODY_OBJ ) );
+        bodyLoader.load( &mBody );
+        vBody = gl::VboMesh( mBody );
+        ObjLoader footLoader( (DataSourceRef)loadResource( FOOT_OBJ ) );
+        footLoader.load( &mFoot );
+        vFoot = gl::VboMesh( mFoot );
         
     }
     void setupSocketSv();
@@ -264,24 +296,11 @@ public:
     }
     
     //描写処理
-    /*
-    void *draw(void *p){
-        if(!buffer){
-            gl::clear();
-            gl::pushMatrices();// カメラ位置を設定する
-            gl::setMatrices( mMayaCam.getCamera() );
-            drawMarionette();//マリオネット描写
-            drawListArea();//メッセージリストの表示
-            gl::popMatrices();
-            // パラメーター設定UIを描画する
-        }
-        return NULL;
-    }*/
-    //描写処理
     void draw(){
         gl::clear();
+        drawBackgroundColor();
         
-gl::setMatrices( mMayaCam.getCamera() );
+        gl::setMatrices( mMayaCam.getCamera() );
         gl::pushMatrices();
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
@@ -294,23 +313,49 @@ gl::setMatrices( mMayaCam.getCamera() );
         gl::popMatrices();
         
         //アクセス数に応じてマリオネットを表示
+//        for(int i = 0; i < sumOfFrag(); i++){
+//            gl::pushMatrices();
+//            translate(Vec2d(i*200,0));
+//            drawMarionette();//マリオネット描写
+//            gl::popMatrices();
+//        }
+
+        //アクセス数に応じてマリオネットを表示
         for(int i = 0; i < sumOfFrag(); i++){
             gl::pushMatrices();
             translate(Vec2d(i*200,0));
-            drawMarionette();//マリオネット描写
+            drawObjFile();
             gl::popMatrices();
         }
-        
-        glDisable( GL_CULL_FACE );//ポリゴンの表面だけを描く
-        gl::pushMatrices();
-        objTexture.bind();
-        gl::translate(Vec3f(0,defArmTransY,0));
-        gl::draw( mVBO );
-        gl::popMatrices();
-     
+        drawObjFile();
         mParams.draw();
     }
-    
+    //背景色を変える
+    void drawBackgroundColor(){
+        int largeMessageNumber = countMessageNumber();//一番多かったメッセージ番号を取ってくる
+        if(largeMessageNumber == 1){
+            glClearColor(1.0f, 0.0f, 0.0f, 1.0f);//赤
+        }else if(largeMessageNumber == 2){
+            glClearColor(0.0f, 1.0f, 0.0f, 1.0f);//青
+        }else if(largeMessageNumber == 3){
+            glClearColor(0.0f, 0.0f, 1.0f, 1.0f);//緑
+        }else if(largeMessageNumber == 4){
+            glClearColor(1.0f, 1.0f, 0.0f, 1.0f);//黄
+        }else if(largeMessageNumber == 5){
+            glClearColor(0.0f, 1.0f, 1.0f, 1.0f);//黄緑？
+        }else if(largeMessageNumber == 6){
+            glClearColor(1.0f, 0.0f, 1.0f, 1.0f);//紫
+        }else if(largeMessageNumber == 7){
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        }else if(largeMessageNumber == 8){
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        }else if(largeMessageNumber == 9){
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        }else{
+        
+        }
+
+    }
     //マリオネット
     void drawMarionette(){
         
@@ -372,6 +417,65 @@ gl::setMatrices( mMayaCam.getCamera() );
         gl::popMatrices();
         
     }
+    
+    //マリオネット
+    void drawObjFile(){
+        
+        glDisable( GL_CULL_FACE );//ポリゴンの表面だけを描く
+        
+        gl::pushMatrices();
+        objTexture.bind();
+        gl::translate(Vec3f(defFaceTransX,defFaceTransY,defFaceTransZ));
+        gl::draw( mHead );
+        gl::popMatrices();
+        
+        gl::pushMatrices();
+        objTexture.bind();
+        gl::translate(Vec3f(defRightArmTransX,defArmTransY,defArmTransZ));
+        gl::draw( mArm2 );
+        gl::popMatrices();gl::pushMatrices();
+
+        gl::pushMatrices();
+        objTexture.bind();
+        gl::translate(Vec3f(defRightArmTransX,defArmTransY,defArmTransZ));
+        gl::draw( mArm1 );
+        gl::popMatrices();gl::pushMatrices();
+
+        gl::pushMatrices();
+        objTexture.bind();
+        gl::translate(Vec3f(defRightArmTransX,defArmTransY,defArmTransZ));
+        gl::draw( mHand );
+        gl::popMatrices();
+        
+        gl::pushMatrices();
+        objTexture.bind();
+        gl::translate(Vec3f(defLeftArmTransX,defArmTransY,defArmTransZ));
+        gl::draw( mLeftArm2 );
+        gl::popMatrices();
+        
+        gl::pushMatrices();
+        gl::translate(Vec3f(defLeftArmTransX,defArmTransY,defArmTransZ));
+        gl::draw( mLeftArm1 );
+        gl::popMatrices();
+        
+        gl::pushMatrices();
+        objTexture.bind();
+        gl::translate(Vec3f(defLeftArmTransX,defArmTransY,defArmTransZ));
+        gl::draw( mLeftHand );
+        gl::popMatrices();
+        
+        objTexture.bind();
+        gl::translate(Vec3f(defBodyTransX,defBodyTransY,defBodyTransZ));
+        gl::draw( mBody );
+        gl::popMatrices();
+        
+        gl::pushMatrices();
+        objTexture.bind();
+        gl::translate(Vec3f(defBodyTransX,defBodyTransY,defBodyTransZ));
+        gl::draw( mFoot );
+        gl::popMatrices();
+    }
+    
     //メッセージリスト
     void drawListArea(){
         //stringstream mm;
@@ -471,13 +575,16 @@ gl::setMatrices( mMayaCam.getCamera() );
     void drawBarGraph(){
         for (int i = 0; i < pastSec; i++) {
             //棒グラフを描写していく
+//            glPushMatrix();
+//                glBegin(GL_LINE_STRIP);
+//                glColor3d(1.0, 0.0, 0.0);
+//                glLineWidth(10);
+//                glVertex2d(point[i][0]*10, 0);//x座標
+//                glVertex2d(point[i][0]*10 , point[i][1]*100);//y座標
+//                glEnd();
+//            glPopMatrix();
             glPushMatrix();
-                glBegin(GL_LINE_STRIP);
-                glColor3d(1.0, 0.0, 0.0);
-                glLineWidth(10);
-                glVertex2d(point[i][0]*10, 0);//x座標
-                glVertex2d(point[i][0]*10 , point[i][1]*100);//y座標
-                glEnd();
+            gl::drawCube(Vec3f(point[i][0]*10,0,0), Vec3f(10,point[i][1]*100,10));
             glPopMatrix();
             
         }
@@ -562,6 +669,8 @@ gl::setMatrices( mMayaCam.getCamera() );
                      Vec3f( mRight, mBottom, mBackSide ) );
     
     }
+    
+    
     
     //音声解析の描写
     void drawAudioAnalyze(){
@@ -655,16 +764,16 @@ gl::setMatrices( mMayaCam.getCamera() );
     
     //ci::Vec3f defFaceTrans(new Point3D(0.0, 120.0, 50.0));
     float defFaceTransX = 200.0;//顔のx座標の位置
-    float defFaceTransY = 675-110.0;//顔のy座標の位置
+    float defFaceTransY = 550.0;//顔のy座標の位置
     float defFaceTransZ = 0.0;//顔のz座標の位置
     
     float defBodyTransX = 200.0;//体のx座標の位置
-    float defBodyTransY = 675.0;//体のy座標の位置
+    float defBodyTransY = 550.0;//体のy座標の位置
     float defBodyTransZ = 0.0;//体のz座標の位置
     
-    float defLeftArmTransX=200.0+75.0;
-    float defRightArmTransX=200.0-75.0;
-    float defArmTransY=675+20.0;
+    float defLeftArmTransX=200.0;
+    float defRightArmTransX=200.0;
+    float defArmTransY=550.0;
     float defArmTransZ=0.0;
     
     float rightEyeAngle = 0.0;//右目の角度
@@ -736,6 +845,32 @@ gl::setMatrices( mMayaCam.getCamera() );
     gl::VboMesh		mVBO;
     gl::Texture		objTexture;
     
+    TriMesh			mHead;
+    gl::VboMesh		vHead;
+    
+    TriMesh			mArm2;
+    gl::VboMesh		vArm2;
+    
+    TriMesh			mArm1;
+    gl::VboMesh		vArm1;
+    
+    TriMesh			mHand;
+    gl::VboMesh		vHand;
+    
+    TriMesh			mLeftArm2;
+    gl::VboMesh		vLeftArm2;
+    
+    TriMesh			mLeftArm1;
+    gl::VboMesh		vLeftArm1;
+    
+    TriMesh			mLeftHand;
+    gl::VboMesh		vLeftHand;
+    
+    TriMesh			mBody;
+    gl::VboMesh		vBody;
+    
+    TriMesh			mFoot;
+    gl::VboMesh		vFoot;
 };
 CINDER_APP_NATIVE( LeapApp, RendererGl )
 
@@ -852,6 +987,29 @@ int sumHands(){
     }
     return hands;
 }
+
+//送られてきたジェスチャーの数を集計して、合計した値を返す関数
+int sumJes1(){
+    int jes1 = 0;
+    for (int i = 0; i < 7 ; i++) {
+        if (allMessage[i].flag == 1) {
+            jes1 = jes1 + allMessage[i].count[2];
+        }
+    }
+    return jes1;
+}
+
+//送られてきたジェスチャーの数を集計して、合計した値を返す関数
+int sumJes2(){
+    int jes2 = 0;
+    for (int i = 0; i < 7 ; i++) {
+        if (allMessage[i].flag == 1) {
+            jes2 = jes2 + allMessage[i].count[3];
+        }
+    }
+    return jes2;
+}
+
 
 //送られてきたメッセージの中でどれが多いかを算出し、返す関数
 int countMessageNumber(){
