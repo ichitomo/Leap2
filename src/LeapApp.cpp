@@ -270,7 +270,7 @@ public:
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
             drawCircle2();//サークルで表示
-            drawHelpLine();
+            drawHelp();
             //drawAudioAnalyze();//音声解析の描写
             drawAccessNumber();
         gl::popMatrices();
@@ -407,7 +407,7 @@ public:
         gl::drawString("タップ数：" + to_string(j2), Vec2d(900,800));
     }
     
-    void drawHelpLine(){
+    void drawHelp(){
         ////円の中心からメッセージリストまで
         //円の中心からメッセージリストの一番上の線まで引く線
         gl::pushMatrices();
