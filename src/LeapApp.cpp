@@ -15,6 +15,7 @@
 #include "cinder/Capture.h"
 #include "cinder/params/Params.h"
 #include "time.h"
+
 #include "../include/Resources.h"
 
 #include "string.h"
@@ -22,12 +23,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <algorithm>//最大値を求める
 
 //音声解析
 #include "cinder/gl/TextureFont.h"
 #include "cinder/audio/Context.h"
 #include "cinder/audio/MonitorNode.h"
 #include "../common/AudioDrawUtils.h"
+
+//OBJロード
+#include "cinder/ObjLoader.h"
+#include "cinder/gl/Vbo.h"
 
 
 //ソケット通信
@@ -53,7 +59,7 @@ using namespace cinder::audio;
 #define PI 3.141592653589793
 
 #define MAXPOINTS 1300//記録できる点の限度
-#define MAXCLIENTNUMBER 7//通信できるクライアントの人数
+#define MAXCLIENTNUMBER 6//通信できるクライアントの人数
 GLint point[MAXPOINTS][2];//点の座標の入れ物
 //std::vector<std::vector<int>> point;//点の座標の入れ物
 
@@ -72,11 +78,18 @@ int cirCount=0;//サークルしたときのカウント数
 int messageNumber;//受け取ったメッセージの番号
 int accountNumber;//受け取ったbufferの中のアカウントナンバー(int型)
 
-char sepMessage[7];
+char sepMessage[6];
 char *separateAccount, *separateHans, *separateJes1, *separateJes2, *separateMessageNumber;
 int sepAccount, sepHans, sepJes1, sepJes2, sepMessageNumber;
-
-
+int mcount = 0;
+int mcount2 = 0;
+int mcount3 = 0;
+int mcount4 = 0;
+int mcount5 = 0;
+int mcount6 = 0;
+int mcount7 = 0;
+int mcount8 = 0;
+int mcount9 = 0;
 std::vector<string> saveMessage;
 
 typedef struct{
@@ -85,7 +98,7 @@ typedef struct{
     int count[5];
     char msg[256];
 } messageInfo;
-messageInfo allMessage[7];
+messageInfo allMessage[6];
 
 string messageList[] = {
     {"大きな声で"},
@@ -112,6 +125,8 @@ int sumOfFrag();
 void separateMessage();
 void debag(int number);
 int sumHands();
+int sumJes1();
+int sumJes2();
 int countMessageNumber();
 
 
@@ -133,8 +148,8 @@ public:
         glEnable( GL_LIGHT0 );
         
         // 表示フォントの設定
-        mFont = Font( "YuGothic", 20 );
-        
+        mFont = Font( "YuGothic", 32 );
+        mFontColor = ColorA(0.65, 0.83, 0.58);//文字の色
         
         // カメラ(視点)の設定
         mCameraDistance = 1500.0f;//カメラの距離（z座標）
@@ -143,35 +158,16 @@ public:
         //mUp				= Vec3f::yAxis();//頭の方向を表すベクトル
         mCam.setEyePoint( mEye );//カメラの位置
         mCam.setCenterOfInterestPoint(mCenter);//カメラのみる先
-        //(GLdouble fovy, GLdouble aspect, GLdouble zNear, GLdouble zFar)
-        //fozyはカメラの画角、値が大きいほど透視が強くなり、絵が小さくなる
-        //getWindowAspectRatio()はアスペクト比
-        //nNearは奥行きの範囲：手前（全方面）
-        //zFarは奥行きの範囲：後方（後方面）
         mCam.setPerspective( 45.0f, getWindowAspectRatio(), 300.0f, 3000.0f );//カメラから見える視界の設定
         
         mMayaCam.setCurrentCam(mCam);
         
-        gl::enableAlphaBlending();
- 
         // アルファブレンディングを有効にする
-//        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-//        gl::enable(GL_BLEND);
-        
-        //backgroundImageの読み込み
-        //backgroundImage = gl::Texture(loadImage(loadResource("../resources/image.jpg")));
-        backgroundImage = gl::Texture(loadImage(loadResource(BACKGROUND)));
-        
-        // 描画時に奥行きの考慮を有効にする
-        gl::enableDepthRead();
-        gl::enableDepthWrite();
+        gl::enableAlphaBlending();
         
         //スレッドを作る
         pthread_t threadSoc;
         pthread_create(&threadSoc, NULL, socketSv_loop, NULL);
-        
-        //pthread_join(threadSoc,NULL);
-        //exit(EXIT_SUCCESS);
         
         A = 100.0;    //振幅を設定
         w = 1.0;    //角周波数を設定
@@ -202,6 +198,17 @@ public:
         
         getWindow()->setTitle( mInputDeviceNode->getDevice()->getName() );
         
+        
+        // SETUP PARAMS
+        mParams = params::InterfaceGl( "Params", Vec2i( 200, 160 ) );//名前、サイズ
+        
+        //テクスチャのロード
+        objTexture = gl::Texture( loadImage( loadResource( DUMMY_IMAGE ) ) );
+        objTexture.enableAndBind();
+        //OBJファイルのロード
+        ObjLoader loader( (DataSourceRef)loadResource( DUMMY_OBJ ) );
+        loader.load( &mMesh );
+        mVBO = gl::VboMesh( mMesh );
     }
     void setupSocketSv();
     void socketSv();
@@ -239,206 +246,167 @@ public:
         mLastFrame = mCurrentFrame;
         mCurrentFrame = mLeap.frame();
         
-        //お絵かきモードのアップデート処理
-        mPaint.update();
-//        //カメラのアップデート処理
-//        mEye = Vec3f( 0.0f, 0.0f, mCameraDistance );//距離を変える
-//        mCamPrep.lookAt( mEye, mCenter, mUp);//カメラの位置、m詰めている先の位置、カメラの頭の方向を表すベクトル
-//        gl::setMatrices( mCamPrep );
-//        gl::rotate( mSceneRotation );//カメラの回転
-        
-
-        
         //音声解析のアップデート処理
         mSpectrumPlot.setBounds( Rectf( 40, 40, (float)getWindowWidth() - 40, (float)getWindowHeight() - 40 ) );
         
         //アップデートごとに一度、メインスレッド上でノードから振幅スペクトルをコピーします。
         mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
         
+        
         graphUpdate();
+        
+        
     }
     
-    //描写処理
-    /*
-    void *draw(void *p){
-        if(!buffer){
-            gl::clear();
-            gl::pushMatrices();// カメラ位置を設定する
-            gl::setMatrices( mMayaCam.getCamera() );
-            drawMarionette();//マリオネット描写
-            drawListArea();//メッセージリストの表示
-            gl::popMatrices();
-            // パラメーター設定UIを描画する
-        }
-        return NULL;
-    }*/
     //描写処理
     void draw(){
         gl::clear();
-        gl::enableDepthRead();
-        gl::enableDepthWrite();
-
+        //drawBackgroundColor();
+        //"title"描写
+        gl::pushMatrices();
+        gl::drawString("Server Program", Vec2f(100,100),mFontColor, mFont);
+        gl::popMatrices();
         gl::pushMatrices();
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
-            //drawPainting();//指の軌跡を描く
+            drawCircle2();//サークルで表示
             //drawAudioAnalyze();//音声解析の描写
-            //drawSinGraph();//sinグラフを描く
-            drawBarGraph();
-            //drawBox();
             drawAccessNumber();
         gl::popMatrices();
-        
+
+        //アクセス数に応じてマリオネットを表示
         for(int i = 0; i < sumOfFrag(); i++){
             gl::pushMatrices();
-            translate(Vec2d(i*200,0));
-            drawMarionette();//マリオネット描写
+            translate(Vec2d(i*100,0));
+            drawObjFile();
             gl::popMatrices();
         }
-        
     }
-    
-    //マリオネット
-    void drawMarionette(){
+    //背景色を変える
+    void drawBackgroundColor(){
+        int largeMessageNumber = countMessageNumber();//一番多かったメッセージ番号を取ってくる
+        if(largeMessageNumber == 1){
+            glClearColor(1.0f, 0.0f, 0.0f, 1.0f);//赤
+        }else if(largeMessageNumber == 2){
+            glClearColor(0.0f, 1.0f, 0.0f, 1.0f);//青
+        }else if(largeMessageNumber == 3){
+            glClearColor(0.0f, 0.0f, 1.0f, 1.0f);//緑
+        }else if(largeMessageNumber == 4){
+            glClearColor(1.0f, 1.0f, 0.0f, 1.0f);//黄
+        }else if(largeMessageNumber == 5){
+            glClearColor(0.0f, 1.0f, 1.0f, 1.0f);//黄緑？
+        }else if(largeMessageNumber == 6){
+            glClearColor(1.0f, 0.0f, 1.0f, 1.0f);//紫
+        }else if(largeMessageNumber == 7){
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        }else if(largeMessageNumber == 8){
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        }else if(largeMessageNumber == 9){
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        }else{
         
-        //マリオネットを描く関数
-        
-        //頭
-        gl::pushMatrices();
-            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defFaceTransX,defFaceTransY,defFaceTransZ );//位置
-            glRotatef(-mRotateMatrix3, 1.0f, 0.0f, 0.0f);//回転
-            glScalef( mTotalMotionScale, mTotalMotionScale, mTotalMotionScale );//大きさ
-            //glTranslatef(10.0,0.0f,0.0f);//移動
-            gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 80, 100 ) );//実体
-        gl::popMatrices();
-        
-        //胴体を描く
-        gl::pushMatrices();
-            glTranslatef(defBodyTransX,defBodyTransY,defBodyTransZ);//移動
-            glScalef( mTotalMotionScale, mTotalMotionScale, mTotalMotionScale );//大きさ
-            gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
-        gl::popMatrices();
-        
-        //右腕を描く
-        gl::pushMatrices();
-            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defRightArmTransX,defArmTransY,defArmTransZ);//移動
-            glRotatef(mRotateMatrix2, 1.0f, 1.0f, 0.0f);//回転
-            //glTranslatef( mTotalMotionTranslation.x/10.0,mTotalMotionTranslation.y/10.0,0.0f);//移動
-            glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
-        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100,  50, 50 ) );//実体
-        gl::popMatrices();
-        
-        //左腕を描く
-        gl::pushMatrices();
-            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defLeftArmTransX,defArmTransY,defArmTransZ);//移動
-            glRotatef(-mRotateMatrix4, -1.0f, 1.0f, 0.0f);//回転
-            //glTranslatef(10.0,10.0,0.0f);//移動
-            glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
-        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 50, 50 ) );//実体
-        gl::popMatrices();
-        
-        //右足を描く
-        gl::pushMatrices();
-            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defBodyTransX+25,defBodyTransY+75,defBodyTransZ);//移動
-            glRotatef(mRotateMatrix0, 1.0f, 0.0f, 0.0f);//回転
-            glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
-            gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
-        gl::popMatrices();
-        
-        //左足を描く
-        gl::pushMatrices();
-            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defBodyTransX-25,defBodyTransY+75,defBodyTransZ);//移動
-            glRotatef(mRotateMatrix5, 1.0f, 0.0f, 0.0f);//回転
-            glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
-            gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
-        gl::popMatrices();
-        
-    }
-    //メッセージリスト
-    void drawListArea(){
-        //stringstream mm;
-//        gl::pushMatrices();
-//        auto tbox0 = TextBox().alignment( TextBox::LEFT ).font( mFont ).text ( mm.str() ).color(Color( 1.0f, 1.0f, 1.0f )).backgroundColor( ColorA( 0, 1.0f, 0, 0 ) );
-//        auto mTextTexture = gl::Texture( tbox0.render() );
-//        gl::draw( mTextTexture );
-//  
-//        gl::popMatrices();
-//        if(l < 0){
-//            gl::drawString(message, Vec2d(0,0));
-//        }
-    }
-    
-    //サークル（手の数によって大きくなる球体の描写）
-    void drawCircle(){
-        //sine, cosineを使った曲線的な拡大縮小///////////////////////////
-        //この場合-A*sin(w*radians(t) - p)の計算結果は100.0~-100.0なので、
-        //100を足すことによって、0~200にしている。
-        int handRadius = sumHands();
-        //y = A*sin(w*(t * PI / 180.0) - p) + 100;
-        printf("drawCircle:%d\n",handRadius * 10);
-        gl::pushMatrices();
-        gl::drawSphere(Vec3d( 360, 675, 0 ), handRadius*10);//指の位置
-        gl::drawString(toString(handRadius), Vec2d( 360, 100));
-        gl::popMatrices();
+        }
 
     }
-    void drawAccessNumber(){
-        gl::drawString("トータルアクセス数", Vec2d(1200,700));
-        gl::drawString(to_string(sumOfFrag()), Vec2d(1200,800));
-    }
-    //お絵かき（手の軌跡を描写する）
-    void drawPainting(){
-        
-        // 表示座標系の保持
+    //マリオネット
+    void drawObjFile(){
+        glDisable( GL_CULL_FACE );//ポリゴンの表面だけを描く
+        // 描画時に奥行きの考慮を有効にする
+        gl::enableDepthRead();
+        gl::enableDepthWrite();
         gl::pushMatrices();
-        // 描画
-        mPaint.draw();
+        objTexture.bind();
+        gl::translate(Vec3f(200,800,0));
+        gl::rotate(Vec3f(180,0,0));
+        gl::scale(Vec3f(0.5, 0.5, 0.5));
+        gl::draw( mMesh );
         gl::popMatrices();
-        
     }
     
-    //sinグラフを描く
-    void drawSinGraph(){
-        
-        glPushMatrix();
-       // gl::setMatrices( mMayaCam.getCamera() );
-        drawGrid();  //基準線
-        //サイン波を点で静止画として描画///////////////////////////
-        for (t1 = 0.0; t1 < WindowWidth; t1 += speed) {
-            y = A*sin(w*(t1 * PI / 180.0) - p);
-            drawSolidCircle(Vec2f(t1, y + WindowHeight/2), 1);  //円を描く
+    //ScreenTapの回数によって大きくなる円の描写
+    void drawCircle(){
+        handRadius = sumJes2();//スクリーンタップジェスチャーの回数
+        rad = (R + handRadius);
+        //ScreenTapの回数によって大きくなる円の描写
+        gl::pushMatrices();
+        setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
+        gl::drawString("ScreenTapの回数によって大きくなる円の値：handRadius："+toString(handRadius), Vec2d( 100, 820));
+        gl::drawSolidCircle(Vec2d( 360, WindowHeight/2 ), rad * 8);//ジェスチャーによって円の半径が変わる
+        gl::popMatrices();
+//        printf("handRadiusの値：%d\n", handRadius);
+//        printf("radの値：%d\n", rad);
+
+    }
+    //Circleジェスチャーによって移動する円の描写
+    void drawCircle2(){
+        //円の周回運動
+        handSpeed = sumJes1();//サークルジェスチャーの回数
+        handRadius = sumJes2();//スクリーンタップジェスチャーの回数
+        rad = (R + handRadius);
+        circleSpeed = angle + handSpeed;
+        //float theta = angle * PI /180;  //thetaは角度（angle）をラディアン値に直したもの
+        float theta = circleSpeed * PI /180;  //thetaは角度（handSpeed）をラディアン値に直したもの
+        setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
+        gl::pushMatrices();
+        gl::drawString("この値はCircleジェスチャーによって移動する円の値：R："+toString(R), Vec2d( 700, 820));
+        //円を描く
+        //gl::drawStrokedCircle(Vec2d( 360, WindowHeight/2 ), R * 20);//ジェスチャーによって円の半径が変わる//テスト用
+        gl::drawStrokedCircle(Vec2d( 360, WindowHeight/2 ), rad * 10);//ジェスチャーによって円の半径が変わる
+        //円の周りを動く円のアニメーション
+//        posX = R * 20 * cos(theta);//テスト用
+//        posY = -R * 20 * sin(theta);//テスト用
+        posX = rad * 10 * cos(theta);
+        posY = -rad * 10 * sin(theta);
+        gl::drawSolidCircle(Vec2d( posX + 360, posY + WindowHeight/2 ), 10);
+        angle ++;//テスト用
+        //R = R + 1;//テスト用
+//        if (angle >= 360) angle = 0;  //もしangleが360以上になったら0にする。//テスト用
+        if (circleSpeed >= 360) circleSpeed = 0;  //もしangleが360以上になったら0にする。
+//        if (R * 10 > 400) R = 10;//テスト用
+        if (rad * 10 > 400) rad = 400;
+        gl::popMatrices();
+//        printf("Circle2のhandRadiusの値：%d\n", handRadius);
+//        printf("Circle2のradの値：%d\n", rad);
+//        printf("handSpeedの値：%d\n", handSpeed);
+        setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
+    }
+
+    //メッセージリスト
+    void drawListArea(){
+        setDiffuseColor( ci::ColorA(0.83, 0.62, 0.53));
+        for(int i = 0; i < 9; i++){
+            gl::pushMatrices();
+            gl::drawString(messageList[i],Vec2f(992.5, 145 + (70 * i)), ci::ColorA(0.83, 0.62, 0.53), mFont);
+            gl::translate(Vec2f(980, 145 + (70 * i)));
+            drawCircle3();
+            gl::popMatrices();
         }
-        
-        //点のアニメーションを描画////////////////////////////////
-        y = A*sin(w*(t2 * PI / 180.0) - p);
-        drawSolidCircle(Vec2f(t2, y + WindowHeight/2), 10);  //円を描く
-        
-        t2 += speed;    //時間を進める
-        if (t2 > WindowWidth) t2 = 0.0;    //点が右端まで行ったらになったら原点に戻る
-        glPopMatrix();
-        
+        setDiffuseColor( ci::ColorA( 0.8, 0.8, 0.8 ) );
     }
-    void drawGrid(){
-        glPushMatrix();
-        //gl::setMatrices( mMayaCam.getCamera() );
-        //横線
-        glBegin(GL_LINES);
-        glVertex2d(WindowWidth/2, 0);
-        glVertex2d(WindowWidth/2, WindowHeight);
-        glEnd();
-        //横線
-        glBegin(GL_LINES);
-        glVertex2d(0, WindowHeight/2);
-        glVertex2d(WindowWidth, WindowHeight/2);
-        glEnd();
-        glPopMatrix();
+    
+    //説明用の円
+    void drawCircle3(){
+        //説明用の円
+        gl::pushMatrices();
+        //gl::drawSphere(Vec3d( 360, 675, 0 ), 10);//指の位置
+        gl::drawSolidCircle(Vec2d( 0, 0), 10);
+        gl::popMatrices();
     }
-    //時間ごとに座標を記録する関数
+    
+    void drawAccessNumber(){
+        
+        int h = sumHands();
+        int j1 = sumJes1();
+        int j2 = sumJes2();
+        int cmn = countMessageNumber();
+        printf("countMessageNumberの値：%d\n", cmn);
+        gl::drawString("トータルアクセス数：" + to_string(sumOfFrag()), Vec2d(100,800));
+        gl::drawString("一番多いメッセージナンバー：" + to_string(cmn), Vec2d(300,800));
+        gl::drawString("手の数：" + to_string(h), Vec2d(500,800));
+        gl::drawString("サークル数：" + to_string(j1), Vec2d(700,800));
+        gl::drawString("タップ数：" + to_string(j2), Vec2d(900,800));
+    }
+    
     void graphUpdate(){
         //時間が１秒経つごとに座標を配列に記録していく
         if (time(&next) != last){
@@ -455,107 +423,13 @@ public:
             
         }
     }
-    //棒グラフを描く
-    void drawBarGraph(){
-        for (int i = 0; i < pastSec; i++) {
-            //棒グラフを描写していく
-            glPushMatrix();
-                glBegin(GL_LINE_STRIP);
-                glColor3d(1.0, 0.0, 0.0);
-                glLineWidth(10);
-                glVertex2d(point[i][0]*10, 0);//x座標
-                glVertex2d(point[i][0]*10 , point[i][1]*100);//y座標
-                glEnd();
-            glPopMatrix();
-            
-        }
-    }
-    //枠としてのBoxを描く
-    void drawBox(){
-        // 上面
-        gl::drawLine( Vec3f( mLeft, mTop, mBackSide ),
-                     Vec3f( mRight, mTop, mBackSide ) );
-        
-        gl::drawLine( Vec3f( mRight, mTop, mBackSide ),
-                     Vec3f( mRight, mTop, mFrontSide ) );
-        
-        gl::drawLine( Vec3f( mRight, mTop, mFrontSide ),
-                     Vec3f( mLeft, mTop, mFrontSide ) );
-        
-        gl::drawLine( Vec3f( mLeft, mTop, mFrontSide ),
-                     Vec3f( mLeft, mTop, mBackSide ) );
-        
-//        //2/3面
-//        gl::drawLine( Vec3f( mLeft, mTop*2/3, mBackSide ),
-//                     Vec3f( mRight, mTop*2/3, mBackSide ) );
-//        
-//        gl::drawLine( Vec3f( mRight, mTop*2/3, mBackSide ),
-//                     Vec3f( mRight, mTop*2/3, mFrontSide ) );
-//        
-//        gl::drawLine( Vec3f( mRight, mTop*2/3, mFrontSide ),
-//                     Vec3f( mLeft, mTop*2/3, mFrontSide ) );
-//        
-//        gl::drawLine( Vec3f( mLeft, mTop*2/3, mFrontSide ),
-//                     Vec3f( mLeft, mTop*2/3, mBackSide ) );
-//        
-        // 中面
-        gl::drawLine( Vec3f( mLeft, mTop/2, mBackSide ),
-                     Vec3f( mRight, mTop/2, mBackSide ) );
-        
-        gl::drawLine( Vec3f( mRight, mTop/2, mBackSide ),
-                     Vec3f( mRight, mTop/2, mFrontSide ) );
-        
-        gl::drawLine( Vec3f( mRight, mTop/2, mFrontSide ),
-                     Vec3f( mLeft, mTop/2, mFrontSide ) );
-        
-        gl::drawLine( Vec3f( mLeft, mTop/2, mFrontSide ),
-                     Vec3f( mLeft, mTop/2, mBackSide ) );
-        
-        
-        //中心線
-        gl::drawLine( Vec3f( mLeft, mTop/2, 0 ),
-                     Vec3f( mRight, mTop/2, 0 ) );
-
-        gl::drawLine( Vec3f( 0, mTop/2, mBackSide ),
-                     Vec3f( 0, mTop/2, mFrontSide ) );
-        
-        gl::drawLine( Vec3f( mRight/2, 0, 0 ),
-                     Vec3f( mRight/2, mTop, 0 ) );
-        
-        
-        // 下面
-        gl::drawLine( Vec3f( mLeft, mBottom, mBackSide ),
-                     Vec3f( mRight, mBottom, mBackSide ) );
-        
-        gl::drawLine( Vec3f( mRight, mBottom, mBackSide ),
-                     Vec3f( mRight, mBottom, mFrontSide ) );
-        
-        gl::drawLine( Vec3f( mRight, mBottom, mFrontSide ),
-                     Vec3f( mLeft, mBottom, mFrontSide ) );
-        
-        gl::drawLine( Vec3f( mLeft, mBottom, mFrontSide ),
-                     Vec3f( mLeft, mBottom, mBackSide ) );
-        
-        // 側面
-        gl::drawLine( Vec3f( mLeft, mTop, mFrontSide ),
-                     Vec3f( mLeft, mBottom, mFrontSide ) );
-        
-        gl::drawLine( Vec3f( mLeft, mTop, mBackSide ),
-                     Vec3f( mLeft, mBottom, mBackSide ) );
-        
-        gl::drawLine( Vec3f( mRight, mTop, mFrontSide ),
-                     Vec3f( mRight, mBottom, mFrontSide ) );
-        
-        gl::drawLine( Vec3f( mRight, mTop, mBackSide ),
-                     Vec3f( mRight, mBottom, mBackSide ) );
-    
-    }
     
     //音声解析の描写
-    /*void drawAudioAnalyze(){
+    void drawAudioAnalyze(){
         glPushMatrix();
+        glScalef(0.5, 0.5, 0);
         mSpectrumPlot.draw( mMagSpectrum );
-        //drawLabels();
+        drawLabels();
         glPopMatrix();
     }
     
@@ -588,20 +462,7 @@ public:
 //        console() << "bin: " << bin << ", freqency (hertz): " << freq << " - " << freq + binFreqWidth << ", magnitude (decibels): " << mag << endl;
         
     }
-    */
-    // テクスチャの描画
-    void drawTexture(int x, int y){
-        
-        if( tbox0 ) {
-            gl::pushMatrices();
-            gl::translate( x, y);//位置
-            gl::draw( tbox0 );//描く
-            gl::popMatrices();
-        }
-        
-    }
     
-    // GL_LIGHT0の色を変える
     void setDiffuseColor( ci::ColorA diffuseColor ){
         gl::color( diffuseColor );
         glMaterialfv( GL_FRONT, GL_DIFFUSE, diffuseColor );
@@ -616,52 +477,16 @@ public:
     MayaCamUI    mMayaCam;
     
     // パラメータ表示用のテクスチャ（メッセージを表示する）
-    gl::Texture mTextTexture0;//パラメーター表示用
-    //メッセージリスト表示
-    gl::Texture tbox0;//大黒柱
-    
     //バックグラウンド
     gl::Texture backgroundImage;
     
     //フォント
     Font mFont;
-    
-    float mRotateMatrix0;//親指（向かって右足）の回転
-    float mRotateMatrix2;//人さし指（向かって右腕）の回転
-    float mRotateMatrix3;//中指（頭）の回転
-    float mRotateMatrix4;//薬指（向かって左腕）の回転
-    float mRotateMatrix5;//小指（向かって左足）の回転
-    
+    Color mFontColor;
     
     //パラメーター表示する時に使う
     params::InterfaceGl mParams;
 
-    
-    //マリオネットのための変数
-    float mTotalMotionScale = 1.0f;//拡大縮小（顔）
-    float mTotalMotionScale2 = 1.0f;//拡大縮小（表情）
-    
-    //ci::Vec3f defFaceTrans(new Point3D(0.0, 120.0, 50.0));
-    float defFaceTransX = 200.0;//顔のx座標の位置
-    float defFaceTransY = 675-110.0;//顔のy座標の位置
-    float defFaceTransZ = 0.0;//顔のz座標の位置
-    
-    float defBodyTransX = 200.0;//体のx座標の位置
-    float defBodyTransY = 675.0;//体のy座標の位置
-    float defBodyTransZ = 0.0;//体のz座標の位置
-    
-    float defLeftArmTransX=200.0+75.0;
-    float defRightArmTransX=200.0-75.0;
-    float defArmTransY=675+20.0;
-    float defArmTransZ=0.0;
-    
-    float rightEyeAngle = 0.0;//右目の角度
-    float leftEyeAngle = 0.0;//左目の角度
-    float defEyeTransX = 20.0;//右目のx座標の位置
-    float defEyeTransY = 120.0;//右目のy座標の位置
-    float defEyeTransZ = 0.0;//左目のz座標の位置
-    
-    float defMouseTransZ = 0.0;//口のz座標の位置
     
     //メッセージを取得する時に使う
     int messageNumber = -1;
@@ -681,6 +506,15 @@ public:
     float t1;  //静止画用経過時間（X座標）
     float t2;  //アニメーション用経過時間（X座標）
     float speed = 1.0;    //アニメーションのスピード
+    
+    //周回sinグラフ
+    int posX, posY;//移動する円の位置
+    int R = 5;  //軌跡を描く円の半径（初期値を100）
+    int angle = 0;  //角度
+    int handSpeed;//サークルジェスチャーの回数
+    int circleSpeed;//円運動の速さ
+    int handRadius;//スクリーンタップジェスチャーの回数
+    int rad;
     
     Leap::Controller mLeap;
     Leap::Frame mCurrentFrame;//現在のフレーム
@@ -718,6 +552,11 @@ public:
     float mBottom = 0.0;//下面のy座標
     float mBackSide = 500.0;//前面のz座標
     float mFrontSide = -500.0;//後面のz座標
+    
+    //OBJファイルを表示するための変数
+    TriMesh			mMesh;
+    gl::VboMesh		mVBO;
+    gl::Texture		objTexture;
     
 };
 CINDER_APP_NATIVE( LeapApp, RendererGl )
@@ -771,10 +610,11 @@ void socketSv(){
     msgInfo = createMessage(buffer); //受け取ったメッセージを構造体の配列に記録
     if (msgInfo.count[4] == -1) {
         //msgInfo構造体count[4]の値（メッセージの番号）が-1のときはなにもしない
-    } else {
+    }else {
         allMessage[accountNumber] = msgInfo;//それ以外のときはallMessageに記録
+        countMessageNumber();
+        debag(accountNumber);//記録したものをデバッグする
     }
-    debag(accountNumber);//記録したものをデバッグする
     
     //メッセージが受け取れていることをクライアント側に発信
     l = write(newsockfd,"I got your message",18);
@@ -782,7 +622,6 @@ void socketSv(){
     if (l < 0) error("ERROR writing to socket");
     close(newsockfd);
 }
-
 
 void *socketSv_loop(void *p){
     setupSocketSv();
@@ -819,7 +658,7 @@ messageInfo createMessage(char *data){
 int sumOfFrag(){
     
     int sum =0;
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 6; i++) {
         sum = sum + allMessage[i].flag;
     }
     return sum;
@@ -828,7 +667,7 @@ int sumOfFrag(){
 //送られてきた手の数を集計して、合計した値を返す関数
 int sumHands(){
     int hands = 0;
-    for (int i = 0; i < 7 ; i++) {
+    for (int i = 0; i < 6 ; i++) {
         if (allMessage[i].flag == 1) {
             hands = hands + allMessage[i].count[1];
         }
@@ -836,59 +675,124 @@ int sumHands(){
     return hands;
 }
 
+//送られてきたジェスチャーの数を集計して、合計した値を返す関数
+int sumJes1(){
+    int jes1 = 0;
+    for (int i = 0; i < 6 ; i++) {
+        if (allMessage[i].flag == 1) {
+            jes1 = jes1 + allMessage[i].count[2];
+        }
+    }
+    return jes1;
+}
+
+//送られてきたジェスチャーの数を集計して、合計した値を返す関数
+int sumJes2(){
+    int jes2 = 0;
+    for (int i = 0; i < 6 ; i++) {
+        if (allMessage[i].flag == 1) {
+            jes2 = jes2 + allMessage[i].count[3];
+        }
+    }
+    return jes2;
+}
+
+
 //送られてきたメッセージの中でどれが多いかを算出し、返す関数
 int countMessageNumber(){
-    int sumMessageNumber[9] = {0,0,0,0,0,0,0,0,0};//初期化
-    int messageNumber = 0;//返す値
+    int sumMessageNumber[9] = {0,0,0,0,0,0,0,0,0};
+    int resultNumber = 0;//返す値
+    
     //記録しているぶんのmessageの値を参照して、その要素に加えていく
-    for (int i = 0; i < 7; i++) {
+    
+    for (int i = 0; i < 6; i++) {
         if (allMessage[i].flag == 1) {
-            if (allMessage[i].count[4]=='0') {
-                sumMessageNumber[0]++;
+            if (allMessage[i].count[4]== 0) {
+                mcount++;
+                sumMessageNumber[0] = mcount;
             }
-            else if (allMessage[i].count[4]=='1') {
-                sumMessageNumber[1]++;
+            else if (allMessage[i].count[4]== 1) {
+                mcount2++;
+                sumMessageNumber[1] = mcount2;
             }
-            else if (allMessage[i].count[4]=='2') {
-                sumMessageNumber[2]++;
+            else if (allMessage[i].count[4]== 2) {
+                mcount3++;
+                sumMessageNumber[2] = mcount3;
             }
-            else if (allMessage[i].count[4]=='3') {
-                sumMessageNumber[3]++;
+            else if (allMessage[i].count[4]== 3 ) {
+                mcount4++;
+                sumMessageNumber[3] = mcount4;
             }
-            else if (allMessage[i].count[4]=='4') {
-                sumMessageNumber[4]++;
+            else if (allMessage[i].count[4]== 4) {
+                mcount5++;
+                sumMessageNumber[4] = mcount5;
             }
-            else if (allMessage[i].count[4]=='5') {
-                sumMessageNumber[5]++;
+            else if (allMessage[i].count[4]== 5 ) {
+                mcount6++;
+                sumMessageNumber[5] = mcount6;
             }
-            else if (allMessage[i].count[4]=='6') {
-                sumMessageNumber[6]++;
+            else if (allMessage[i].count[4]== 6) {
+                mcount7++;
+                sumMessageNumber[6] = mcount7;
             }
-            else if (allMessage[i].count[4]=='7') {
-                sumMessageNumber[7]++;
+            else if (allMessage[i].count[4]== 7) {
+                mcount8++;
+                sumMessageNumber[7] = mcount8;
             }
-            else if (allMessage[i].count[4]=='8') {
-                sumMessageNumber[8]++;
+            else if (allMessage[i].count[4]== 8 ) {
+                mcount9++;
+                sumMessageNumber[8] = mcount9;
+            }else{
+                
             }
         }
     }
+    //初期値に戻す
+    
     //要素数が最大の番地を求める
-    for(int j = 0; j < sizeof(sumMessageNumber); j++){
-        if(messageNumber < sumMessageNumber[j]){
-            messageNumber = j;
+    for (int i = 0; i < 9; i++) {
+        if (resultNumber < sumMessageNumber[i]) {
+            resultNumber = i;
         }
     }
-    return messageNumber;
+    mcount = 0;
+    mcount2 = 0;
+    mcount3 = 0;
+    mcount4 = 0;
+    mcount5 = 0;
+    mcount6 = 0;
+    mcount7 = 0;
+    mcount8 = 0;
+    mcount9 = 0;
+    
+    printf("最大の番号：%d\n", resultNumber);
+    return resultNumber;
 }
 
 //構造体の中身を確認するための関数
 void debag(int number){
     //送られてきたアカウント名のデータをプリントする
-        printf("時間：%ld\n", allMessage[number].time);
-        printf("フラグ：%d\n", allMessage[number].flag );
-        printf("count[0]の値：%d\n", allMessage[number].count[0]);
-        printf("count[1]の値：%d\n", allMessage[number].count[1]);
-        printf("count[2]の値：%d\n", allMessage[number].count[2]);
-        printf("count[3]の値：%d\n", allMessage[number].count[3]);
-        printf("count[4]の値：%d\n", allMessage[number].count[4]);
+//        printf("時間：%ld\n", allMessage[number].time);
+//        printf("フラグ：%d\n", allMessage[number].flag );
+//        printf("count[0]の値：%d\n", allMessage[number].count[0]);
+//        printf("count[1]の値：%d\n", allMessage[number].count[1]);
+//        printf("count[2]の値：%d\n", allMessage[number].count[2]);
+//        printf("count[3]の値：%d\n", allMessage[number].count[3]);
+//        printf("count[4]の値：%d\n", allMessage[number].count[4]);
+//    for (int i = 0; i < 7; i++) {
+//        printf("i番さんのサークルの値：%d\n", allMessage[i].count[2]);
+//    }
+//    for (int i = 0; i < 7; i++) {
+//        printf("i番さんのタップの値：%d\n", allMessage[i].count[3]);
+//    }
+//    printf("どのメッセージが多いか：%d\n", countMessageNumber());
+//    printf("フラグの合計値：%d\n", sumOfFrag() );
+//    printf("手の数合計値：%d\n", sumHands());
+//    printf("サークルの合計値：%d\n", sumJes1());
+//    printf("スクリーンタップの合計値：%d\n", sumJes2());
+//    
+//    for (int i = 0; i < 6 ; i++) {
+//        printf("%d番のメッセージのフラグ：%d\n", i, allMessage[i].count[4]);
+//    }
+
 }
