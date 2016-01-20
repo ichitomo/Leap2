@@ -294,7 +294,9 @@ public:
         
         graphUpdate();
         //周回グラフのアップデート
-        //R = R + sumJes2();
+        handSpeed = sumJes1();//サークルジェスチャーの回数
+        handRadius = sumJes2();//スクリーンタップジェスチャーの回数
+        rad = (R + handRadius);
     }
     
     //描写処理
@@ -308,16 +310,12 @@ public:
         gl::popMatrices();
         gl::pushMatrices();
             drawListArea();//メッセージリストの表示
+        colorChange();
             drawCircle();//サークルで表示
             drawCircle2();//サークルで表示
-            drawCircle3();//サークルで表示
-            //drawPainting();//指の軌跡を描く
-            //drawAudioAnalyze();//音声解析の描写
-            //drawSinGraph();//sinグラフを描く
-            drawBarGraph();
-            drawAccessNumber();
         
-            //drawAccessNumber();
+            //drawAudioAnalyze();//音声解析の描写
+            drawAccessNumber();
         gl::popMatrices();
 
         //アクセス数に応じてマリオネットを表示
@@ -478,22 +476,17 @@ public:
     //ScreenTapの回数によって大きくなる円の描写
     void drawCircle(){
         //ScreenTapの回数によって大きくなる円の描写
-        int handRadius = sumJes2();
-        int rad = (R + handRadius);
-        setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
         gl::pushMatrices();
+        setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
         gl::drawString("この値はScreenTapの回数によって大きくなる円のhandRadius"+toString(handRadius), Vec2d( 360, 100));
         gl::drawSolidCircle(Vec2d( 360, WindowHeight/2 ), rad * 8);//ジェスチャーによって円の半径が変わる
         gl::popMatrices();
-        setDiffuseColor( ci::ColorA( 0.8, 0.8, 0.8 ) );
 
     }
     //Circleジェスチャーによって移動する円の描写
     void drawCircle2(){
         //円の周回運動
-        int handSpeed = sumJes1();//サークルジェスチャーの回数
-        int handRadius = sumJes2();//スクリーンタップジェスチャーの回数
-        int rad = (R + handRadius);
+        
         //float theta = angle * PI /180;  //thetaは角度（angle）をラディアン値に直したもの
         float theta = handSpeed * PI /180;  //thetaは角度（handSpeed）をラディアン値に直したもの
         setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
@@ -513,84 +506,97 @@ public:
 //        if (angle >= 360) angle = 0;  //もしangleが360以上になったら0にする。//テスト用
         if (handSpeed >= 360) handSpeed = 0;  //もしangleが360以上になったら0にする。
 //        if (R * 10 > 400) R = 10;//テスト用
-        if ((R + handRadius) * 10 > 400) rad = 400;
+        if (rad * 10 > 400) rad = 400;
         gl::popMatrices();
         setDiffuseColor( ci::ColorA( 0.8, 0.8, 0.8 ) );
     }
-    //説明用の円
-    void drawCircle3(){
-    //説明用の円
-        gl::pushMatrices();
-        gl::drawSphere(Vec3d( 360, 675, 0 ), 10);//指の位置
-        gl::popMatrices();
-        setDiffuseColor( ci::ColorA( 0.8, 0.8, 0.8 ) );
-        
-    }
-    
+
     //メッセージリスト
     void drawListArea(){
+        for(int i = 0; i < 9; i++){
+            gl::pushMatrices();
+            gl::drawString(messageList[i],Vec2f(992.5, 145 + (70 * i)), ci::ColorA(0.83, 0.62, 0.53), mFont);
+            setDiffuseColor( ci::ColorA(0.83, 0.62, 0.53));
+            gl::translate(Vec2f(980, 145 + (70 * i)));
+            drawCircle3();
+            setDiffuseColor( ci::ColorA( 0.8, 0.8, 0.8 ) );
+            gl::popMatrices();
+        }
+/*
         
         //"大きな声で"描写
         gl::pushMatrices();
-        gl::drawString(messageList[0],Vec2f(992.5, 145), mFontColor, mFont);
-        gl::translate(Vec2f(992.5, 145));
-        drawBox();
+        gl::drawString(messageList[0],Vec2f(992.5, 145), ci::ColorA(0.83, 0.62, 0.53), mFont);
+        setDiffuseColor( ci::ColorA(0.83, 0.62, 0.53));
+        gl::translate(Vec2f(980, 145));
+        drawCircle3();
+        setDiffuseColor( ci::ColorA( 0.8, 0.8, 0.8 ) );
         gl::popMatrices();
         
         //"頑張れ"描写
         gl::pushMatrices();
         gl::drawString(messageList[1],Vec2f(992.5, 215), mFontColor, mFont);
-        gl::translate(Vec2f(992.5, 215));
-        drawBox();
+        gl::translate(Vec2f(980, 215));
+        drawCircle3();
         gl::popMatrices();
         
         //"もう一度説明して"描写
         gl::pushMatrices();
         gl::drawString(messageList[2],Vec2f(992.5, 285), mFontColor, mFont);
-        gl::translate(Vec2f(992.5, 285));
-        drawBox();
+        gl::translate(Vec2f(980, 285));
+        drawCircle3();
         gl::popMatrices();
         
         //"面白い"描写
         gl::pushMatrices();
         gl::drawString(messageList[3],Vec2f(992.5, 355), mFontColor, mFont);
-        gl::translate(Vec2f(992.5, 355));
-        drawBox();
+        gl::translate(Vec2f(980, 355));
+        drawCircle3();
         gl::popMatrices();
         
         //"トイレにいきたい"描写
         gl::pushMatrices();
         gl::drawString(messageList[4],Vec2f(992.5, 425), mFontColor, mFont);
-        gl::translate(Vec2f(992.5, 425));
-        drawBox();
+        gl::translate(Vec2f(980, 425));
+        drawCircle3();
         gl::popMatrices();
         
         //"わかった"描写
         gl::pushMatrices();
         gl::drawString(messageList[5],Vec2f(992.5, 495), mFontColor, mFont);
-        gl::translate(Vec2f(992.5, 495));
-        drawBox();
+        gl::translate(Vec2f(980, 495));
+        drawCircle3();
         gl::popMatrices();
         
         //"かっこいい"描写
         gl::pushMatrices();
         gl::drawString(messageList[6],Vec2f(992.5, 565), mFontColor, mFont);
-        gl::translate(Vec2f(992.5, 565));
-        drawBox();
+        gl::translate(Vec2f(980, 565));
+        drawCircle3();
         gl::popMatrices();
         
         //"速い!"描写
         gl::pushMatrices();
         gl::drawString(messageList[7],Vec2f(992.5, 635), mFontColor, mFont);
-        gl::translate(Vec2f(992.5, 635));
-        drawBox();
+        gl::translate(Vec2f(980, 635));
+        drawCircle3();
         gl::popMatrices();
         
         //"わからない"描写
         gl::pushMatrices();
         gl::drawString(messageList[8],Vec2f(992.5, 705), mFontColor, mFont);
-        gl::translate(Vec2f(992.5, 705));
-        drawBox();
+        gl::translate(Vec2f(980, 705));
+        drawCircle3();
+        gl::popMatrices();
+ */
+    }
+    
+    //説明用の円
+    void drawCircle3(){
+        //説明用の円
+        gl::pushMatrices();
+        //gl::drawSphere(Vec3d( 360, 675, 0 ), 10);//指の位置
+        gl::drawSolidCircle(Vec2d( 0, 0), 10);
         gl::popMatrices();
     }
     
@@ -753,10 +759,18 @@ public:
         
     }
     
-    // GL_LIGHT0の色を変える
     void setDiffuseColor( ci::ColorA diffuseColor ){
         gl::color( diffuseColor );
         glMaterialfv( GL_FRONT, GL_DIFFUSE, diffuseColor );
+    }
+    
+    Color colorChange(){
+        float r,g,b;
+        r = rand() % 10;
+        g = rand() % 10;
+        b = rand() % 10;
+        Color changeColor(r,g,b);
+        return changeColor;
     }
     
     //ウィンドウサイズ
@@ -839,7 +853,9 @@ public:
     int posX, posY;//移動する円の位置
     int R = 5;  //軌跡を描く円の半径（初期値を100）
     int angle = 0;  //角度
-    
+    int handSpeed;//サークルジェスチャーの回数
+    int handRadius;//スクリーンタップジェスチャーの回数
+    int rad;
     
     Leap::Controller mLeap;
     Leap::Frame mCurrentFrame;//現在のフレーム
