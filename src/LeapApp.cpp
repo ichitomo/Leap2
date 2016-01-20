@@ -155,7 +155,7 @@ public:
 
         
         // アルファブレンディングを有効にする
-        //gl::enableAlphaBlending();
+        gl::enableAlphaBlending();
  
         // 描画時に奥行きの考慮を有効にする
 //        gl::enableDepthRead();
@@ -300,7 +300,6 @@ public:
     //描写処理
     void draw(){
         gl::clear();
-        gl::enableAdditiveBlending();//PNG画像のエッジがなくす
         //drawBackgroundColor();
         //gl::setMatrices( mMayaCam.getCamera() );
         //"title"描写
