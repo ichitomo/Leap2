@@ -16,6 +16,7 @@
 		5323E6B60EAFCA7E003A9687 /* QTKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5323E6B50EAFCA7E003A9687 /* QTKit.framework */; };
 		891B31E31C0BE5FA0039715A /* AudioDrawUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 891B31E11C0BE5FA0039715A /* AudioDrawUtils.cpp */; };
 		8929D8AD1BD072D30016BF57 /* image.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 8929D8AC1BD072D30016BF57 /* image.jpg */; };
+		89397BAB1C4F6C2A00FF60E3 /* objtex.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 89397BA91C4F6C2A00FF60E3 /* objtex.jpg */; };
 		8974FB0B1C239F680029A1E8 /* dummy_obj.obj in Resources */ = {isa = PBXBuildFile; fileRef = 8974FB091C239F670029A1E8 /* dummy_obj.obj */; };
 		8974FB0C1C239F680029A1E8 /* dummy_wood.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 8974FB0A1C239F670029A1E8 /* dummy_wood.jpg */; };
 		898680971B37A3360007A942 /* libLeap.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 898680961B37A3360007A942 /* libLeap.dylib */; };
@@ -57,6 +58,7 @@
 		891B31E21C0BE5FA0039715A /* AudioDrawUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioDrawUtils.h; sourceTree = "<group>"; };
 		8929D8AC1BD072D30016BF57 /* image.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = image.jpg; path = ../resources/image.jpg; sourceTree = "<group>"; };
 		892B22A31C07FB3000334752 /* Paint.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Paint.h; sourceTree = "<group>"; };
+		89397BA91C4F6C2A00FF60E3 /* objtex.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = objtex.jpg; path = ../resources/objtex.jpg; sourceTree = "<group>"; };
 		8974FB091C239F670029A1E8 /* dummy_obj.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = dummy_obj.obj; path = ../resources/dummy_obj.obj; sourceTree = "<group>"; };
 		8974FB0A1C239F670029A1E8 /* dummy_wood.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; name = dummy_wood.jpg; path = ../resources/dummy_wood.jpg; sourceTree = "<group>"; };
 		898680941B37A2F90007A942 /* Leap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Leap.h; path = ../include/Leap.h; sourceTree = "<group>"; };
@@ -165,6 +167,7 @@
 			children = (
 				8929D8AC1BD072D30016BF57 /* image.jpg */,
 				8974FB091C239F670029A1E8 /* dummy_obj.obj */,
+				89397BA91C4F6C2A00FF60E3 /* objtex.jpg */,
 				8974FB0A1C239F670029A1E8 /* dummy_wood.jpg */,
 				84BB2BF7371E4767863296E4 /* CinderApp.icns */,
 				4E5C3383173146FDBE20C58E /* Info.plist */,
@@ -248,6 +251,7 @@
 				90137A2B51414E919CBC3A5C /* CinderApp.icns in Resources */,
 				8929D8AD1BD072D30016BF57 /* image.jpg in Resources */,
 				8974FB0C1C239F680029A1E8 /* dummy_wood.jpg in Resources */,
+				89397BAB1C4F6C2A00FF60E3 /* objtex.jpg in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -25,7 +25,7 @@
 
 
 //objファイルのテクスチャをロード
-#define DUMMY_IMAGE			CINDER_RESOURCE( ../resources/, dummy_wood.jpg, 129, IMAGE )
+#define DUMMY_IMAGE			CINDER_RESOURCE( ../resources/, objtex.jpg, 129, IMAGE )
 
 
 
