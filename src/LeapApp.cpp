@@ -139,7 +139,7 @@ public:
         glEnable( GL_LIGHT0 );
         
         // 表示フォントの設定
-        mFont = Font( "YuGothic", 20 );
+        mFont = Font( "YuGothic", 32 );
         mFontColor = ColorA(0.65, 0.83, 0.58);//文字の色
         
         // カメラ(視点)の設定
@@ -155,11 +155,11 @@ public:
 
         
         // アルファブレンディングを有効にする
-        gl::enableAlphaBlending();
+        //gl::enableAlphaBlending();
  
         // 描画時に奥行きの考慮を有効にする
-        gl::enableDepthRead();
-        gl::enableDepthWrite();
+//        gl::enableDepthRead();
+//        gl::enableDepthWrite();
         
         //スレッドを作る
         pthread_t threadSoc;
@@ -300,8 +300,13 @@ public:
     //描写処理
     void draw(){
         gl::clear();
-        drawBackgroundColor();
+        gl::enableAdditiveBlending();//PNG画像のエッジがなくす
+        //drawBackgroundColor();
         //gl::setMatrices( mMayaCam.getCamera() );
+        //"title"描写
+        gl::pushMatrices();
+        gl::drawString("Server Program", Vec2f(100,100),mFontColor, mFont);
+        gl::popMatrices();
         gl::pushMatrices();
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
