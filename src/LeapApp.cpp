@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <algorithm>//最大値を求める
 
 //音声解析
 #include "cinder/gl/TextureFont.h"
@@ -58,7 +59,7 @@ using namespace cinder::audio;
 #define PI 3.141592653589793
 
 #define MAXPOINTS 1300//記録できる点の限度
-#define MAXCLIENTNUMBER 7//通信できるクライアントの人数
+#define MAXCLIENTNUMBER 6//通信できるクライアントの人数
 GLint point[MAXPOINTS][2];//点の座標の入れ物
 //std::vector<std::vector<int>> point;//点の座標の入れ物
 
@@ -77,19 +78,27 @@ int cirCount=0;//サークルしたときのカウント数
 int messageNumber;//受け取ったメッセージの番号
 int accountNumber;//受け取ったbufferの中のアカウントナンバー(int型)
 
-char sepMessage[7];
+char sepMessage[6];
 char *separateAccount, *separateHans, *separateJes1, *separateJes2, *separateMessageNumber;
 int sepAccount, sepHans, sepJes1, sepJes2, sepMessageNumber;
-
+int mcount = 0;
+int mcount2 = 0;
+int mcount3 = 0;
+int mcount4 = 0;
+int mcount5 = 0;
+int mcount6 = 0;
+int mcount7 = 0;
+int mcount8 = 0;
+int mcount9 = 0;
 std::vector<string> saveMessage;
 
 typedef struct{
     time_t time;
     int flag = 0;
-    int count[5];
+    int count[5] = {0,0,0,-1};
     char msg[256];
 } messageInfo;
-messageInfo allMessage[7];
+messageInfo allMessage[6];
 
 string messageList[] = {
     {"大きな声で"},
@@ -152,19 +161,13 @@ public:
         mCam.setPerspective( 45.0f, getWindowAspectRatio(), 300.0f, 3000.0f );//カメラから見える視界の設定
         
         mMayaCam.setCurrentCam(mCam);
-
         
         // アルファブレンディングを有効にする
         gl::enableAlphaBlending();
- 
-        // 描画時に奥行きの考慮を有効にする
-//        gl::enableDepthRead();
-//        gl::enableDepthWrite();
         
         //スレッドを作る
         pthread_t threadSoc;
         pthread_create(&threadSoc, NULL, socketSv_loop, NULL);
-        
         
         A = 100.0;    //振幅を設定
         w = 1.0;    //角周波数を設定
@@ -198,7 +201,6 @@ public:
         
         // SETUP PARAMS
         mParams = params::InterfaceGl( "Params", Vec2i( 200, 160 ) );//名前、サイズ
-        mParams.addParam( "Scene time",  &defArmTransY);
         
         //テクスチャのロード
         objTexture = gl::Texture( loadImage( loadResource( DUMMY_IMAGE ) ) );
@@ -207,37 +209,6 @@ public:
         ObjLoader loader( (DataSourceRef)loadResource( DUMMY_OBJ ) );
         loader.load( &mMesh );
         mVBO = gl::VboMesh( mMesh );
-        
-//        ObjLoader headLoader( (DataSourceRef)loadResource( HEAD_OBJ ) );
-//        headLoader.load( &mHead );
-//        vHead = gl::VboMesh( mHead );
-//        ObjLoader arm2Loader( (DataSourceRef)loadResource( ARM2_OBJ ) );
-//        arm2Loader.load( &mArm2 );
-//        vArm2 = gl::VboMesh( mArm2 );
-//        ObjLoader arm1Loader( (DataSourceRef)loadResource( ARM1_OBJ ) );
-//        arm1Loader.load( &mArm1 );
-//        vArm1 = gl::VboMesh( mArm1 );
-//        ObjLoader handLoader( (DataSourceRef)loadResource( HAND_OBJ ) );
-//        handLoader.load( &mHand );
-//        vHand = gl::VboMesh( mHand );
-//        
-//        ObjLoader leftArm2Loader( (DataSourceRef)loadResource( LEFT_ARM2_OBJ ) );
-//        leftArm2Loader.load( &mLeftArm2 );
-//        vLeftArm2 = gl::VboMesh( mLeftArm2 );
-//        ObjLoader leftArm1Loader( (DataSourceRef)loadResource( LEFT_ARM1_OBJ ) );
-//        leftArm1Loader.load( &mLeftArm1 );
-//        vLeftArm1 = gl::VboMesh( mLeftArm1 );
-//        ObjLoader leftHandLoader( (DataSourceRef)loadResource( LEFT_HAND_OBJ ) );
-//        leftHandLoader.load( &mLeftHand );
-//        vLeftHand = gl::VboMesh( mLeftHand );
-//        
-//        ObjLoader bodyLoader( (DataSourceRef)loadResource( BODY_OBJ ) );
-//        bodyLoader.load( &mBody );
-//        vBody = gl::VboMesh( mBody );
-//        ObjLoader footLoader( (DataSourceRef)loadResource( FOOT_OBJ ) );
-//        footLoader.load( &mFoot );
-//        vFoot = gl::VboMesh( mFoot );
-        
     }
     void setupSocketSv();
     void socketSv();
@@ -275,12 +246,6 @@ public:
         mLastFrame = mCurrentFrame;
         mCurrentFrame = mLeap.frame();
         
-//        //カメラのアップデート処理
-//        mEye = Vec3f( 0.0f, 0.0f, mCameraDistance );//距離を変える
-//        mCamPrep.lookAt( mEye, mCenter, mUp);//カメラの位置、m詰めている先の位置、カメラの頭の方向を表すベクトル
-//        gl::setMatrices( mCamPrep );
-//        gl::rotate( mSceneRotation );//カメラの回転
-        
         //音声解析のアップデート処理
         mSpectrumPlot.setBounds( Rectf( 40, 40, (float)getWindowWidth() - 40, (float)getWindowHeight() - 40 ) );
         
@@ -301,14 +266,12 @@ public:
     void draw(){
         gl::clear();
         //drawBackgroundColor();
-        //gl::setMatrices( mMayaCam.getCamera() );
         //"title"描写
         gl::pushMatrices();
         gl::drawString("Server Program", Vec2f(100,100),mFontColor, mFont);
         gl::popMatrices();
         gl::pushMatrices();
             drawListArea();//メッセージリストの表示
-            colorChange();
             drawCircle();//サークルで表示
             drawCircle2();//サークルで表示
             //drawAudioAnalyze();//音声解析の描写
@@ -369,7 +332,7 @@ public:
         //ScreenTapの回数によって大きくなる円の描写
         gl::pushMatrices();
         setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
-        gl::drawString("この値はScreenTapの回数によって大きくなる円のhandRadius"+toString(handRadius), Vec2d( 360, 100));
+        gl::drawString("ScreenTapの回数によって大きくなる円の値：handRadius："+toString(handRadius), Vec2d( 100, 820));
         gl::drawSolidCircle(Vec2d( 360, WindowHeight/2 ), rad * 8);//ジェスチャーによって円の半径が変わる
         gl::popMatrices();
 
@@ -382,7 +345,7 @@ public:
         float theta = handSpeed * PI /180;  //thetaは角度（handSpeed）をラディアン値に直したもの
         setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
         gl::pushMatrices();
-        gl::drawString("この値はCircleジェスチャーによって移動する円のR"+toString(R), Vec2d( 360, 800));
+        gl::drawString("この値はCircleジェスチャーによって移動する円の値：R："+toString(R), Vec2d( 700, 820));
         //円を描く
         //gl::drawStrokedCircle(Vec2d( 360, WindowHeight/2 ), R * 20);//ジェスチャーによって円の半径が変わる//テスト用
         gl::drawStrokedCircle(Vec2d( 360, WindowHeight/2 ), rad * 10);//ジェスチャーによって円の半径が変わる
@@ -424,13 +387,6 @@ public:
         gl::popMatrices();
     }
     
-    //枠としてのBoxを描く
-    void drawBox(){
-        setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
-        gl::drawStrokedRoundedRect(Rectf(0,0,270,50), 5);//角の丸い四角
-        setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
-    }
-    
     void drawAccessNumber(){
         
         int h = sumHands();
@@ -438,16 +394,11 @@ public:
         int j2 = sumJes2();
         int cmn = countMessageNumber();
         
-        gl::drawString("トータルアクセス数", Vec2d(1200,700));
-        gl::drawString(to_string(sumOfFrag()), Vec2d(1200,800));
-        gl::drawString("一番多いメッセージナンバー", Vec2d(1200,100));
-        gl::drawString(to_string(cmn), Vec2d(1200,110));
-        gl::drawString("手の数", Vec2d(1200,150));
-        gl::drawString(to_string(h), Vec2d(1200,160));
-        gl::drawString("サークル数", Vec2d(1200,180));
-        gl::drawString(to_string(j1), Vec2d(1200,200));
-        gl::drawString("タップ数", Vec2d(1200,210));
-        gl::drawString(to_string(j2), Vec2d(1200,230));
+        gl::drawString("トータルアクセス数：" + to_string(sumOfFrag()), Vec2d(100,800));
+        gl::drawString("一番多いメッセージナンバー：" + to_string(cmn), Vec2d(300,800));
+        gl::drawString("手の数：" + to_string(h), Vec2d(500,800));
+        gl::drawString("サークル数：" + to_string(j1), Vec2d(700,800));
+        gl::drawString("タップ数：" + to_string(j2), Vec2d(900,800));
     }
     //お絵かき（手の軌跡を描写する）
     void drawPainting(){
@@ -460,43 +411,6 @@ public:
         
     }
     
-    //sinグラフを描く
-    void drawSinGraph(){
-        
-        glPushMatrix();
-       // gl::setMatrices( mMayaCam.getCamera() );
-        drawGrid();  //基準線
-        //サイン波を点で静止画として描画///////////////////////////
-        for (t1 = 0.0; t1 < WindowWidth; t1 += speed) {
-            y = A*sin(w*(t1 * PI / 180.0) - p);
-            drawSolidCircle(Vec2f(t1, y + WindowHeight/2), 1);  //円を描く
-        }
-        
-        //点のアニメーションを描画////////////////////////////////
-        y = A*sin(w*(t2 * PI / 180.0) - p);
-        drawSolidCircle(Vec2f(t2, y + WindowHeight/2), 10);  //円を描く
-        
-        t2 += speed;    //時間を進める
-        if (t2 > WindowWidth) t2 = 0.0;    //点が右端まで行ったらになったら原点に戻る
-        glPopMatrix();
-        
-    }
-    void drawGrid(){
-        glPushMatrix();
-        //gl::setMatrices( mMayaCam.getCamera() );
-        //横線
-        glBegin(GL_LINES);
-        glVertex2d(WindowWidth/2, 0);
-        glVertex2d(WindowWidth/2, WindowHeight);
-        glEnd();
-        //横線
-        glBegin(GL_LINES);
-        glVertex2d(0, WindowHeight/2);
-        glVertex2d(WindowWidth, WindowHeight/2);
-        glEnd();
-        glPopMatrix();
-    }
-    //時間ごとに座標を記録する関数
     void graphUpdate(){
         //時間が１秒経つごとに座標を配列に記録していく
         if (time(&next) != last){
@@ -513,6 +427,7 @@ public:
             
         }
     }
+    
     //棒グラフを描く
     void drawBarGraph(){
         for (int i = 0; i < pastSec; i++) {
@@ -571,30 +486,9 @@ public:
         
     }
     
-    // テクスチャの描画
-    void drawTexture(int x, int y){
-        
-        if( tbox0 ) {
-            gl::pushMatrices();
-            gl::translate( x, y);//位置
-            gl::draw( tbox0 );//描く
-            gl::popMatrices();
-        }
-        
-    }
-    
     void setDiffuseColor( ci::ColorA diffuseColor ){
         gl::color( diffuseColor );
         glMaterialfv( GL_FRONT, GL_DIFFUSE, diffuseColor );
-    }
-    
-    Color colorChange(){
-        float r,g,b;
-        r = rand() % 10;
-        g = rand() % 10;
-        b = rand() % 10;
-        Color changeColor(r,g,b);
-        return changeColor;
     }
     
     //ウィンドウサイズ
@@ -606,10 +500,6 @@ public:
     MayaCamUI    mMayaCam;
     
     // パラメータ表示用のテクスチャ（メッセージを表示する）
-    gl::Texture mTextTexture0;//パラメーター表示用
-    //メッセージリスト表示
-    gl::Texture tbox0;//大黒柱
-    
     //バックグラウンド
     gl::Texture backgroundImage;
     
@@ -617,42 +507,9 @@ public:
     Font mFont;
     Color mFontColor;
     
-    float mRotateMatrix0;//親指（向かって右足）の回転
-    float mRotateMatrix2;//人さし指（向かって右腕）の回転
-    float mRotateMatrix3;//中指（頭）の回転
-    float mRotateMatrix4;//薬指（向かって左腕）の回転
-    float mRotateMatrix5;//小指（向かって左足）の回転
-    
-    
     //パラメーター表示する時に使う
     params::InterfaceGl mParams;
 
-    
-    //マリオネットのための変数
-    float mTotalMotionScale = 1.0f;//拡大縮小（顔）
-    float mTotalMotionScale2 = 1.0f;//拡大縮小（表情）
-    
-    //ci::Vec3f defFaceTrans(new Point3D(0.0, 120.0, 50.0));
-    float defFaceTransX = 200.0;//顔のx座標の位置
-    float defFaceTransY = 550.0;//顔のy座標の位置
-    float defFaceTransZ = 0.0;//顔のz座標の位置
-    
-    float defBodyTransX = 200.0;//体のx座標の位置
-    float defBodyTransY = 550.0;//体のy座標の位置
-    float defBodyTransZ = 0.0;//体のz座標の位置
-    
-    float defLeftArmTransX=200.0;
-    float defRightArmTransX=200.0;
-    float defArmTransY=550.0;
-    float defArmTransZ=0.0;
-    
-    float rightEyeAngle = 0.0;//右目の角度
-    float leftEyeAngle = 0.0;//左目の角度
-    float defEyeTransX = 20.0;//右目のx座標の位置
-    float defEyeTransY = 120.0;//右目のy座標の位置
-    float defEyeTransZ = 0.0;//左目のz座標の位置
-    
-    float defMouseTransZ = 0.0;//口のz座標の位置
     
     //メッセージを取得する時に使う
     int messageNumber = -1;
@@ -723,34 +580,6 @@ public:
     gl::VboMesh		mVBO;
     gl::Texture		objTexture;
     
-    TriMesh			mHead;
-    gl::VboMesh		vHead;
-    
-    TriMesh			mArm2;
-    gl::VboMesh		vArm2;
-    
-    TriMesh			mArm1;
-    gl::VboMesh		vArm1;
-    
-    TriMesh			mHand;
-    gl::VboMesh		vHand;
-    
-    TriMesh			mLeftArm2;
-    gl::VboMesh		vLeftArm2;
-    
-    TriMesh			mLeftArm1;
-    gl::VboMesh		vLeftArm1;
-    
-    TriMesh			mLeftHand;
-    gl::VboMesh		vLeftHand;
-    
-    TriMesh			mBody;
-    gl::VboMesh		vBody;
-    
-    TriMesh			mFoot;
-    gl::VboMesh		vFoot;
-    
-    
 };
 CINDER_APP_NATIVE( LeapApp, RendererGl )
 
@@ -803,10 +632,11 @@ void socketSv(){
     msgInfo = createMessage(buffer); //受け取ったメッセージを構造体の配列に記録
     if (msgInfo.count[4] == -1) {
         //msgInfo構造体count[4]の値（メッセージの番号）が-1のときはなにもしない
-    } else {
+    }else {
         allMessage[accountNumber] = msgInfo;//それ以外のときはallMessageに記録
+        countMessageNumber();
+        debag(accountNumber);//記録したものをデバッグする
     }
-    debag(accountNumber);//記録したものをデバッグする
     
     //メッセージが受け取れていることをクライアント側に発信
     l = write(newsockfd,"I got your message",18);
@@ -850,7 +680,7 @@ messageInfo createMessage(char *data){
 int sumOfFrag(){
     
     int sum =0;
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 6; i++) {
         sum = sum + allMessage[i].flag;
     }
     return sum;
@@ -881,7 +711,7 @@ int sumJes1(){
 //送られてきたジェスチャーの数を集計して、合計した値を返す関数
 int sumJes2(){
     int jes2 = 0;
-    for (int i = 0; i < 7 ; i++) {
+    for (int i = 0; i < 6 ; i++) {
         if (allMessage[i].flag == 1) {
             jes2 = jes2 + allMessage[i].count[3];
         }
@@ -892,57 +722,87 @@ int sumJes2(){
 
 //送られてきたメッセージの中でどれが多いかを算出し、返す関数
 int countMessageNumber(){
-    int sumMessageNumber[9] = {0,0,0,0,0,0,0,0,0};//初期化
-    int messageNumber = 0;//返す値
+    int sumMessageNumber[9] = {0,0,0,0,0,0,0,0,0};
+    int resultNumber;//返す値
+    
     //記録しているぶんのmessageの値を参照して、その要素に加えていく
-    for (int i = 0; i < 7; i++) {
+    
+    for (int i = 0; i < 6; i++) {
         if (allMessage[i].flag == 1) {
-            if (allMessage[i].count[4]=='0') {
-                sumMessageNumber[0]++;
+            if (allMessage[i].count[4]== 0) {
+                mcount++;
+                sumMessageNumber[0] = mcount;
             }
-            else if (allMessage[i].count[4]=='1') {
-                sumMessageNumber[1]++;
+            else if (allMessage[i].count[4]== 1) {
+                mcount2++;
+                sumMessageNumber[1] = mcount2;
             }
-            else if (allMessage[i].count[4]=='2') {
-                sumMessageNumber[2]++;
+            else if (allMessage[i].count[4]== 2) {
+                mcount3++;
+                sumMessageNumber[2] = mcount3;
             }
-            else if (allMessage[i].count[4]=='3') {
-                sumMessageNumber[3]++;
+            else if (allMessage[i].count[4]== 3 ) {
+                mcount4++;
+                sumMessageNumber[3] = mcount4;
             }
-            else if (allMessage[i].count[4]=='4') {
-                sumMessageNumber[4]++;
+            else if (allMessage[i].count[4]== 4) {
+                mcount5++;
+                sumMessageNumber[4] = mcount5;
             }
-            else if (allMessage[i].count[4]=='5') {
-                sumMessageNumber[5]++;
+            else if (allMessage[i].count[4]== 5 ) {
+                mcount6++;
+                sumMessageNumber[5] = mcount6;
             }
-            else if (allMessage[i].count[4]=='6') {
-                sumMessageNumber[6]++;
+            else if (allMessage[i].count[4]== 6) {
+                mcount7++;
+                sumMessageNumber[6] = mcount7;
             }
-            else if (allMessage[i].count[4]=='7') {
-                sumMessageNumber[7]++;
+            else if (allMessage[i].count[4]== 7) {
+                mcount8++;
+                sumMessageNumber[7] = mcount8;
             }
-            else if (allMessage[i].count[4]=='8') {
-                sumMessageNumber[8]++;
+            else if (allMessage[i].count[4]== 8 ) {
+                mcount9++;
+                sumMessageNumber[8] = mcount9;
+            }else{
+                
             }
         }
     }
     //要素数が最大の番地を求める
-    for(int j = 0; j < sizeof(sumMessageNumber); j++){
-        if(messageNumber < sumMessageNumber[j]){
-            messageNumber = j;
+    for (int i = 0; i < 9; i++) {
+        if (resultNumber < sumMessageNumber[i]) {
+            resultNumber = i;
         }
     }
-    return messageNumber;
+    //初期値に戻す
+    mcount = mcount2 = mcount3 = mcount4 = mcount5 = mcount6 = mcount7 = mcount8 = mcount9 = 0;
+    printf("最大の番号：%d\n", resultNumber);
+    return resultNumber;
 }
 
 //構造体の中身を確認するための関数
 void debag(int number){
     //送られてきたアカウント名のデータをプリントする
-        printf("時間：%ld\n", allMessage[number].time);
-        printf("フラグ：%d\n", allMessage[number].flag );
-        printf("count[0]の値：%d\n", allMessage[number].count[0]);
-        printf("count[1]の値：%d\n", allMessage[number].count[1]);
-        printf("count[2]の値：%d\n", allMessage[number].count[2]);
-        printf("count[3]の値：%d\n", allMessage[number].count[3]);
-        printf("count[4]の値：%d\n", allMessage[number].count[4]);
+//        printf("時間：%ld\n", allMessage[number].time);
+//        printf("フラグ：%d\n", allMessage[number].flag );
+//        printf("count[0]の値：%d\n", allMessage[number].count[0]);
+//        printf("count[1]の値：%d\n", allMessage[number].count[1]);
+//        printf("count[2]の値：%d\n", allMessage[number].count[2]);
+//        printf("count[3]の値：%d\n", allMessage[number].count[3]);
+//        printf("count[4]の値：%d\n", allMessage[number].count[4]);
+    
+    printf("どのメッセージが多いか：%d\n", countMessageNumber());
+//    printf("フラグの合計値：%d\n", sumOfFrag() );
+//    printf("手の数合計値：%d\n", sumHands());
+//    printf("サークルの合計値：%d\n", sumJes1());
+//    printf("スクリーンタップの合計値：%d\n", sumJes2());
+    
+    for (int i = 0; i < 6 ; i++) {
+//        if (allMessage[i].flag == 1) {
+            printf("%d番のメッセージのフラグ：%d\n", i, allMessage[i].count[4]);
+            //jes2 = jes2 + allMessage[i].count[3];
+  //      }
+    }
+
 }
