@@ -270,6 +270,7 @@ public:
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
             drawCircle2();//サークルで表示
+            drawHelpLine();
             //drawAudioAnalyze();//音声解析の描写
             drawAccessNumber();
         gl::popMatrices();
@@ -405,6 +406,25 @@ public:
         gl::drawString("手の数：" + to_string(h), Vec2d(500,800));
         gl::drawString("サークル数：" + to_string(j1), Vec2d(700,800));
         gl::drawString("タップ数：" + to_string(j2), Vec2d(900,800));
+    }
+    
+    void drawHelpLine(){
+        //円の中心からメッセージリストの一番上の線まで引く線
+        gl::pushMatrices();
+        gl::drawLine(Vec2f( 360, WindowHeight/2 ), Vec2f(920, 145));
+        gl::popMatrices();
+        //メッセージリストの縦に引く線
+        gl::pushMatrices();
+        gl::drawLine(Vec2f(950, 145), Vec2f(950, 705));
+        gl::popMatrices();
+        //メッセージリストへ横に引く線
+        gl::pushMatrices();
+        gl::drawLine(Vec2f(920, 145), Vec2f(980, 145));
+        for (int i = 1; i < 9; i++) {
+            gl::drawLine(Vec2f(950, 145 + (70 * i)), Vec2f(980, 145 + (70 * i)));
+        }
+        gl::popMatrices();
+    
     }
     
     void graphUpdate(){
