@@ -95,7 +95,7 @@ std::vector<string> saveMessage;
 typedef struct{
     time_t time;
     int flag = 0;
-    int count[5] = {0,0,0,-1};
+    int count[5];
     char msg[256];
 } messageInfo;
 messageInfo allMessage[6];
@@ -256,10 +256,6 @@ public:
         graphUpdate();
         
         
-        //周回グラフのアップデート
-        handSpeed = sumJes1();//サークルジェスチャーの回数
-        handRadius = sumJes2();//スクリーンタップジェスチャーの回数
-        rad = (R + handRadius);
     }
     
     //描写処理
@@ -329,20 +325,27 @@ public:
     
     //ScreenTapの回数によって大きくなる円の描写
     void drawCircle(){
+        handRadius = sumJes2();//スクリーンタップジェスチャーの回数
+        rad = (R + handRadius);
         //ScreenTapの回数によって大きくなる円の描写
         gl::pushMatrices();
         setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
         gl::drawString("ScreenTapの回数によって大きくなる円の値：handRadius："+toString(handRadius), Vec2d( 100, 820));
         gl::drawSolidCircle(Vec2d( 360, WindowHeight/2 ), rad * 8);//ジェスチャーによって円の半径が変わる
         gl::popMatrices();
+//        printf("handRadiusの値：%d\n", handRadius);
+//        printf("radの値：%d\n", rad);
 
     }
     //Circleジェスチャーによって移動する円の描写
     void drawCircle2(){
         //円の周回運動
-        
+        handSpeed = sumJes1();//サークルジェスチャーの回数
+        handRadius = sumJes2();//スクリーンタップジェスチャーの回数
+        rad = (R + handRadius);
+        circleSpeed = angle + handSpeed;
         //float theta = angle * PI /180;  //thetaは角度（angle）をラディアン値に直したもの
-        float theta = handSpeed * PI /180;  //thetaは角度（handSpeed）をラディアン値に直したもの
+        float theta = circleSpeed * PI /180;  //thetaは角度（handSpeed）をラディアン値に直したもの
         setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
         gl::pushMatrices();
         gl::drawString("この値はCircleジェスチャーによって移動する円の値：R："+toString(R), Vec2d( 700, 820));
@@ -355,13 +358,16 @@ public:
         posX = rad * 10 * cos(theta);
         posY = -rad * 10 * sin(theta);
         gl::drawSolidCircle(Vec2d( posX + 360, posY + WindowHeight/2 ), 10);
-        //angle ++;//テスト用
+        angle ++;//テスト用
         //R = R + 1;//テスト用
 //        if (angle >= 360) angle = 0;  //もしangleが360以上になったら0にする。//テスト用
-        if (handSpeed >= 360) handSpeed = 0;  //もしangleが360以上になったら0にする。
+        if (circleSpeed >= 360) circleSpeed = 0;  //もしangleが360以上になったら0にする。
 //        if (R * 10 > 400) R = 10;//テスト用
         if (rad * 10 > 400) rad = 400;
         gl::popMatrices();
+//        printf("Circle2のhandRadiusの値：%d\n", handRadius);
+//        printf("Circle2のradの値：%d\n", rad);
+//        printf("handSpeedの値：%d\n", handSpeed);
         setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
     }
 
@@ -393,22 +399,12 @@ public:
         int j1 = sumJes1();
         int j2 = sumJes2();
         int cmn = countMessageNumber();
-        
+        printf("countMessageNumberの値：%d\n", cmn);
         gl::drawString("トータルアクセス数：" + to_string(sumOfFrag()), Vec2d(100,800));
         gl::drawString("一番多いメッセージナンバー：" + to_string(cmn), Vec2d(300,800));
         gl::drawString("手の数：" + to_string(h), Vec2d(500,800));
         gl::drawString("サークル数：" + to_string(j1), Vec2d(700,800));
         gl::drawString("タップ数：" + to_string(j2), Vec2d(900,800));
-    }
-    //お絵かき（手の軌跡を描写する）
-    void drawPainting(){
-        
-        // 表示座標系の保持
-        gl::pushMatrices();
-        // 描画
-        mPaint.draw();
-        gl::popMatrices();
-        
     }
     
     void graphUpdate(){
@@ -424,25 +420,6 @@ public:
 //            << "秒数：" << pastSec << "\n"
 //            << "手の数：" << handCount << "\n"
 //            << std::endl;
-            
-        }
-    }
-    
-    //棒グラフを描く
-    void drawBarGraph(){
-        for (int i = 0; i < pastSec; i++) {
-            //棒グラフを描写していく
-//            glPushMatrix();
-//                glBegin(GL_LINE_STRIP);
-//                glColor3d(1.0, 0.0, 0.0);
-//                glLineWidth(10);
-//                glVertex2d(point[i][0]*10, 0);//x座標
-//                glVertex2d(point[i][0]*10 , point[i][1]*100);//y座標
-//                glEnd();
-//            glPopMatrix();
-            glPushMatrix();
-            gl::drawCube(Vec3f(point[i][0]*10,0,0), Vec3f(10,point[i][1]*100,10));
-            glPopMatrix();
             
         }
     }
@@ -535,6 +512,7 @@ public:
     int R = 5;  //軌跡を描く円の半径（初期値を100）
     int angle = 0;  //角度
     int handSpeed;//サークルジェスチャーの回数
+    int circleSpeed;//円運動の速さ
     int handRadius;//スクリーンタップジェスチャーの回数
     int rad;
     
@@ -689,7 +667,7 @@ int sumOfFrag(){
 //送られてきた手の数を集計して、合計した値を返す関数
 int sumHands(){
     int hands = 0;
-    for (int i = 0; i < 7 ; i++) {
+    for (int i = 0; i < 6 ; i++) {
         if (allMessage[i].flag == 1) {
             hands = hands + allMessage[i].count[1];
         }
@@ -700,7 +678,7 @@ int sumHands(){
 //送られてきたジェスチャーの数を集計して、合計した値を返す関数
 int sumJes1(){
     int jes1 = 0;
-    for (int i = 0; i < 7 ; i++) {
+    for (int i = 0; i < 6 ; i++) {
         if (allMessage[i].flag == 1) {
             jes1 = jes1 + allMessage[i].count[2];
         }
@@ -723,7 +701,7 @@ int sumJes2(){
 //送られてきたメッセージの中でどれが多いかを算出し、返す関数
 int countMessageNumber(){
     int sumMessageNumber[9] = {0,0,0,0,0,0,0,0,0};
-    int resultNumber;//返す値
+    int resultNumber = 0;//返す値
     
     //記録しているぶんのmessageの値を参照して、その要素に加えていく
     
@@ -769,14 +747,24 @@ int countMessageNumber(){
             }
         }
     }
+    //初期値に戻す
+    
     //要素数が最大の番地を求める
     for (int i = 0; i < 9; i++) {
         if (resultNumber < sumMessageNumber[i]) {
             resultNumber = i;
         }
     }
-    //初期値に戻す
-    mcount = mcount2 = mcount3 = mcount4 = mcount5 = mcount6 = mcount7 = mcount8 = mcount9 = 0;
+    mcount = 0;
+    mcount2 = 0;
+    mcount3 = 0;
+    mcount4 = 0;
+    mcount5 = 0;
+    mcount6 = 0;
+    mcount7 = 0;
+    mcount8 = 0;
+    mcount9 = 0;
+    
     printf("最大の番号：%d\n", resultNumber);
     return resultNumber;
 }
@@ -791,18 +779,20 @@ void debag(int number){
 //        printf("count[2]の値：%d\n", allMessage[number].count[2]);
 //        printf("count[3]の値：%d\n", allMessage[number].count[3]);
 //        printf("count[4]の値：%d\n", allMessage[number].count[4]);
-    
-    printf("どのメッセージが多いか：%d\n", countMessageNumber());
+//    for (int i = 0; i < 7; i++) {
+//        printf("i番さんのサークルの値：%d\n", allMessage[i].count[2]);
+//    }
+//    for (int i = 0; i < 7; i++) {
+//        printf("i番さんのタップの値：%d\n", allMessage[i].count[3]);
+//    }
+//    printf("どのメッセージが多いか：%d\n", countMessageNumber());
 //    printf("フラグの合計値：%d\n", sumOfFrag() );
 //    printf("手の数合計値：%d\n", sumHands());
 //    printf("サークルの合計値：%d\n", sumJes1());
 //    printf("スクリーンタップの合計値：%d\n", sumJes2());
-    
-    for (int i = 0; i < 6 ; i++) {
-//        if (allMessage[i].flag == 1) {
-            printf("%d番のメッセージのフラグ：%d\n", i, allMessage[i].count[4]);
-            //jes2 = jes2 + allMessage[i].count[3];
-  //      }
-    }
+//    
+//    for (int i = 0; i < 6 ; i++) {
+//        printf("%d番のメッセージのフラグ：%d\n", i, allMessage[i].count[4]);
+//    }
 
 }
