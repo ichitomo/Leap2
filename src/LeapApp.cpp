@@ -264,12 +264,13 @@ public:
         //drawBackgroundColor();
         //"title"描写
         gl::pushMatrices();
-        gl::drawString("Server Program", Vec2f(100,100),mFontColor, mFont);
+        gl::drawString("Server Program", Vec2f(100,50),mFontColor, mFont);
         gl::popMatrices();
         gl::pushMatrices();
             drawListArea();//メッセージリストの表示
             drawCircle();//サークルで表示
             drawCircle2();//サークルで表示
+            drawHelp();
             //drawAudioAnalyze();//音声解析の描写
             drawAccessNumber();
         gl::popMatrices();
@@ -376,8 +377,8 @@ public:
         setDiffuseColor( ci::ColorA(0.83, 0.62, 0.53));
         for(int i = 0; i < 9; i++){
             gl::pushMatrices();
-            gl::drawString(messageList[i],Vec2f(992.5, 145 + (70 * i)), ci::ColorA(0.83, 0.62, 0.53), mFont);
-            gl::translate(Vec2f(980, 145 + (70 * i)));
+            gl::drawString(messageList[i],Vec2f(995, 100 + (70 * i)), ci::ColorA(0.83, 0.62, 0.53), mFont);
+            gl::translate(Vec2f(980, 100 + (70 * i)));
             drawCircle3();
             gl::popMatrices();
         }
@@ -388,7 +389,6 @@ public:
     void drawCircle3(){
         //説明用の円
         gl::pushMatrices();
-        //gl::drawSphere(Vec3d( 360, 675, 0 ), 10);//指の位置
         gl::drawSolidCircle(Vec2d( 0, 0), 10);
         gl::popMatrices();
     }
@@ -405,6 +405,50 @@ public:
         gl::drawString("手の数：" + to_string(h), Vec2d(500,800));
         gl::drawString("サークル数：" + to_string(j1), Vec2d(700,800));
         gl::drawString("タップ数：" + to_string(j2), Vec2d(900,800));
+    }
+    
+    void drawHelp(){
+        ////円の中心からメッセージリストまで
+        //円の中心からメッセージリストの一番上の線まで引く線
+        gl::pushMatrices();
+        gl::drawLine(Vec2f( 360, WindowHeight/2 ), Vec2f(920, 100));
+        gl::popMatrices();
+        //メッセージリストの縦に引く線
+        gl::pushMatrices();
+        gl::drawLine(Vec2f(950, 100), Vec2f(950, 660));
+        gl::popMatrices();
+        //メッセージリストへ横に引く線
+        gl::pushMatrices();
+        gl::drawLine(Vec2f(920, 100), Vec2f(980, 100));
+        for (int i = 1; i < 9; i++) {
+            gl::drawLine(Vec2f(950, 100 + (70 * i)), Vec2f(980, 100 + (70 * i)));
+        }
+        gl::popMatrices();
+        
+        ////円の周回運動から
+        //円から曲点まで
+        gl::pushMatrices();
+        gl::drawLine(Vec2f( rad * 10 + 360, WindowHeight/2 ), Vec2f(rad * 10 + 360 + 50, 500));
+        gl::popMatrices();
+        //曲点から端まで
+        gl::pushMatrices();
+        gl::drawLine(Vec2f(rad * 10 + 360 + 50, 500), Vec2f(rad * 10 + 360 + 110, 500));
+        gl::drawSolidCircle(Vec2f(rad * 10 + 360 + 110, 500), 5);
+        gl::drawString("サークル", Vec2f(rad * 10 + 360 + 50, 480));
+        gl::popMatrices();
+        
+        ////円の周回運動から半径のHelp
+        //円から曲点まで
+        gl::pushMatrices();
+        gl::drawLine(Vec2f(360, -rad * 8 * -1 + WindowHeight/2 ), Vec2f(360 + rad * 8, 560));
+        gl::popMatrices();
+        //曲点から端まで
+        gl::pushMatrices();
+        gl::drawLine(Vec2f(360 + rad * 8, 560), Vec2f(360 + 60 + rad * 8, 560));
+        gl::drawSolidCircle(Vec2f(360 + 60 + rad * 8, 560), 5);
+        gl::drawString("タップ数", Vec2f(360 + rad * 8, 540));
+        gl::popMatrices();
+    
     }
     
     void graphUpdate(){
