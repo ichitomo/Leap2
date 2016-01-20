@@ -327,7 +327,7 @@ public:
         rad = (R + handRadius);
         //ScreenTapの回数によって大きくなる円の描写
         gl::pushMatrices();
-        gl::drawString("ScreenTapの回数によって大きくなる円の値：handRadius："+toString(handRadius), Vec2d( 100, 820));
+        //gl::drawString("ScreenTapの回数によって大きくなる円の値：handRadius："+toString(handRadius), Vec2d( 100, 820));
         gl::drawSolidCircle(Vec2d( 360, WindowHeight/2 ), rad * 8);//ジェスチャーによって円の半径が変わる
         gl::popMatrices();
 //        printf("handRadiusの値：%d\n", handRadius);
@@ -344,7 +344,7 @@ public:
         //float theta = angle * PI /180;  //thetaは角度（angle）をラディアン値に直したもの
         float theta = circleSpeed * PI /180;  //thetaは角度（handSpeed）をラディアン値に直したもの
         gl::pushMatrices();
-        gl::drawString("この値はCircleジェスチャーによって移動する円の値：R："+toString(R), Vec2d( 700, 820));
+        //gl::drawString("この値はCircleジェスチャーによって移動する円の値：R："+toString(R), Vec2d( 700, 820));
         //円を描く
         //gl::drawStrokedCircle(Vec2d( 360, WindowHeight/2 ), R * 20);//ジェスチャーによって円の半径が変わる//テスト用
         gl::drawStrokedCircle(Vec2d( 360, WindowHeight/2 ), rad * 10);//ジェスチャーによって円の半径が変わる
@@ -394,11 +394,11 @@ public:
         int j2 = sumJes2();
         int cmn = countMessageNumber();
         printf("countMessageNumberの値：%d\n", cmn);
-        gl::drawString("トータルアクセス数：" + to_string(sumOfFrag()), Vec2d(100,800));
-        gl::drawString("一番多いメッセージナンバー：" + to_string(cmn), Vec2d(300,800));
-        gl::drawString("手の数：" + to_string(h), Vec2d(500,800));
-        gl::drawString("サークル数：" + to_string(j1), Vec2d(700,800));
-        gl::drawString("タップ数：" + to_string(j2), Vec2d(900,800));
+        gl::drawString("トータルアクセス数：" + to_string(sumOfFrag()), Vec2d(400,820));
+        gl::drawString("一番多いメッセージナンバー：" + to_string(cmn), Vec2d(600,820));
+        gl::drawString("手の数：" + to_string(h), Vec2d(850,820));
+        gl::drawString("サークル数：" + to_string(j1), Vec2d(1000,820));
+        gl::drawString("タップ数：" + to_string(j2), Vec2d(1200,820));
     }
     
     void drawHelp(){
