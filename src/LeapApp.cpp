@@ -275,7 +275,7 @@ public:
         //アクセス数に応じてマリオネットを表示
         for(int i = 0; i < sumOfFrag(); i++){
             gl::pushMatrices();
-            translate(Vec2d(i*100,0));
+            translate(Vec2d(i*50,0));
             drawObjFile();
             gl::popMatrices();
         }
@@ -296,7 +296,7 @@ public:
         }else if(largeMessageNumber == 5){
             setDiffuseColor( ci::ColorA(1.0f, 0.0f, 1.0f, 1.0f));//紫
         }else if(largeMessageNumber == 6){
-            setDiffuseColor( ci::ColorA(0.0f, 0.0f, 0.0f, 1.0f));
+            setDiffuseColor( ci::ColorA(0.2f, 0.2f, 0.2f, 1.0f));
         }else if(largeMessageNumber == 7){
             setDiffuseColor( ci::ColorA(0.7f, 0.7f, 0.7f, 0.7f));
         }else if(largeMessageNumber == 8){
@@ -384,7 +384,7 @@ public:
             }else if(i == 5){
                 setDiffuseColor( ci::ColorA(1.0f, 0.0f, 1.0f, 1.0f));//紫
             }else if(i == 6){
-                setDiffuseColor( ci::ColorA(0.0f, 0.0f, 0.0f, 1.0f));
+                setDiffuseColor( ci::ColorA(0.2f, 0.2f, 0.2f, 1.0f));
             }else if(i == 7){
                 setDiffuseColor( ci::ColorA(0.7f, 0.7f, 0.7f, 0.7f));
             }else if(i == 8){
