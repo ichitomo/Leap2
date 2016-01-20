@@ -436,6 +436,18 @@ public:
         gl::drawSolidCircle(Vec2f(rad * 10 + 360 + 110, 500), 5);
         gl::drawString("サークル", Vec2f(rad * 10 + 360 + 50, 480));
         gl::popMatrices();
+        
+        ////円の周回運動から半径のHelp
+        //円から曲点まで
+        gl::pushMatrices();
+        gl::drawLine(Vec2f(360, -rad * 8 * -1 + WindowHeight/2 ), Vec2f(360 + rad * 8, 560));
+        gl::popMatrices();
+        //曲点から端まで
+        gl::pushMatrices();
+        gl::drawLine(Vec2f(360 + rad * 8, 560), Vec2f(360 + 60 + rad * 8, 560));
+        gl::drawSolidCircle(Vec2f(360 + 60 + rad * 8, 560), 5);
+        gl::drawString("タップ数", Vec2f(360 + rad * 8, 540));
+        gl::popMatrices();
     
     }
     
