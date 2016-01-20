@@ -208,36 +208,35 @@ public:
         loader.load( &mMesh );
         mVBO = gl::VboMesh( mMesh );
         
-        ObjLoader headLoader( (DataSourceRef)loadResource( HEAD_OBJ ) );
-        headLoader.load( &mHead );
-        vHead = gl::VboMesh( mHead );
-        
-        ObjLoader arm2Loader( (DataSourceRef)loadResource( ARM2_OBJ ) );
-        arm2Loader.load( &mArm2 );
-        vArm2 = gl::VboMesh( mArm2 );
-        ObjLoader arm1Loader( (DataSourceRef)loadResource( ARM1_OBJ ) );
-        arm1Loader.load( &mArm1 );
-        vArm1 = gl::VboMesh( mArm1 );
-        ObjLoader handLoader( (DataSourceRef)loadResource( HAND_OBJ ) );
-        handLoader.load( &mHand );
-        vHand = gl::VboMesh( mHand );
-        
-        ObjLoader leftArm2Loader( (DataSourceRef)loadResource( LEFT_ARM2_OBJ ) );
-        leftArm2Loader.load( &mLeftArm2 );
-        vLeftArm2 = gl::VboMesh( mLeftArm2 );
-        ObjLoader leftArm1Loader( (DataSourceRef)loadResource( LEFT_ARM1_OBJ ) );
-        leftArm1Loader.load( &mLeftArm1 );
-        vLeftArm1 = gl::VboMesh( mLeftArm1 );
-        ObjLoader leftHandLoader( (DataSourceRef)loadResource( LEFT_HAND_OBJ ) );
-        leftHandLoader.load( &mLeftHand );
-        vLeftHand = gl::VboMesh( mLeftHand );
-        
-        ObjLoader bodyLoader( (DataSourceRef)loadResource( BODY_OBJ ) );
-        bodyLoader.load( &mBody );
-        vBody = gl::VboMesh( mBody );
-        ObjLoader footLoader( (DataSourceRef)loadResource( FOOT_OBJ ) );
-        footLoader.load( &mFoot );
-        vFoot = gl::VboMesh( mFoot );
+//        ObjLoader headLoader( (DataSourceRef)loadResource( HEAD_OBJ ) );
+//        headLoader.load( &mHead );
+//        vHead = gl::VboMesh( mHead );
+//        ObjLoader arm2Loader( (DataSourceRef)loadResource( ARM2_OBJ ) );
+//        arm2Loader.load( &mArm2 );
+//        vArm2 = gl::VboMesh( mArm2 );
+//        ObjLoader arm1Loader( (DataSourceRef)loadResource( ARM1_OBJ ) );
+//        arm1Loader.load( &mArm1 );
+//        vArm1 = gl::VboMesh( mArm1 );
+//        ObjLoader handLoader( (DataSourceRef)loadResource( HAND_OBJ ) );
+//        handLoader.load( &mHand );
+//        vHand = gl::VboMesh( mHand );
+//        
+//        ObjLoader leftArm2Loader( (DataSourceRef)loadResource( LEFT_ARM2_OBJ ) );
+//        leftArm2Loader.load( &mLeftArm2 );
+//        vLeftArm2 = gl::VboMesh( mLeftArm2 );
+//        ObjLoader leftArm1Loader( (DataSourceRef)loadResource( LEFT_ARM1_OBJ ) );
+//        leftArm1Loader.load( &mLeftArm1 );
+//        vLeftArm1 = gl::VboMesh( mLeftArm1 );
+//        ObjLoader leftHandLoader( (DataSourceRef)loadResource( LEFT_HAND_OBJ ) );
+//        leftHandLoader.load( &mLeftHand );
+//        vLeftHand = gl::VboMesh( mLeftHand );
+//        
+//        ObjLoader bodyLoader( (DataSourceRef)loadResource( BODY_OBJ ) );
+//        bodyLoader.load( &mBody );
+//        vBody = gl::VboMesh( mBody );
+//        ObjLoader footLoader( (DataSourceRef)loadResource( FOOT_OBJ ) );
+//        footLoader.load( &mFoot );
+//        vFoot = gl::VboMesh( mFoot );
         
     }
     void setupSocketSv();
@@ -276,15 +275,11 @@ public:
         mLastFrame = mCurrentFrame;
         mCurrentFrame = mLeap.frame();
         
-        //お絵かきモードのアップデート処理
-        mPaint.update();
 //        //カメラのアップデート処理
 //        mEye = Vec3f( 0.0f, 0.0f, mCameraDistance );//距離を変える
 //        mCamPrep.lookAt( mEye, mCenter, mUp);//カメラの位置、m詰めている先の位置、カメラの頭の方向を表すベクトル
 //        gl::setMatrices( mCamPrep );
 //        gl::rotate( mSceneRotation );//カメラの回転
-        
-
         
         //音声解析のアップデート処理
         mSpectrumPlot.setBounds( Rectf( 40, 40, (float)getWindowWidth() - 40, (float)getWindowHeight() - 40 ) );
@@ -292,7 +287,10 @@ public:
         //アップデートごとに一度、メインスレッド上でノードから振幅スペクトルをコピーします。
         mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
         
+        
         graphUpdate();
+        
+        
         //周回グラフのアップデート
         handSpeed = sumJes1();//サークルジェスチャーの回数
         handRadius = sumJes2();//スクリーンタップジェスチャーの回数
@@ -310,10 +308,9 @@ public:
         gl::popMatrices();
         gl::pushMatrices();
             drawListArea();//メッセージリストの表示
-        colorChange();
+            colorChange();
             drawCircle();//サークルで表示
             drawCircle2();//サークルで表示
-        
             //drawAudioAnalyze();//音声解析の描写
             drawAccessNumber();
         gl::popMatrices();
@@ -321,12 +318,10 @@ public:
         //アクセス数に応じてマリオネットを表示
         for(int i = 0; i < sumOfFrag(); i++){
             gl::pushMatrices();
-            translate(Vec2d(i*200,0));
+            translate(Vec2d(i*100,0));
             drawObjFile();
             gl::popMatrices();
         }
-        //drawObjFile();
-        //mParams.draw();
     }
     //背景色を変える
     void drawBackgroundColor(){
@@ -355,121 +350,17 @@ public:
 
     }
     //マリオネット
-    void drawMarionette(){
-        
-        //マリオネットを描く関数
-        
-        //頭
-        gl::pushMatrices();
-            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defFaceTransX,defFaceTransY,defFaceTransZ );//位置
-            glRotatef(-mRotateMatrix3, 1.0f, 0.0f, 0.0f);//回転
-            glScalef( mTotalMotionScale, mTotalMotionScale, mTotalMotionScale );//大きさ
-            //glTranslatef(10.0,0.0f,0.0f);//移動
-            gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 80, 100 ) );//実体
-        gl::popMatrices();
-        
-        //胴体を描く
-        gl::pushMatrices();
-            glTranslatef(defBodyTransX,defBodyTransY,defBodyTransZ);//移動
-            glScalef( mTotalMotionScale, mTotalMotionScale, mTotalMotionScale );//大きさ
-            gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
-        gl::popMatrices();
-        
-        //右腕を描く
-        gl::pushMatrices();
-            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defRightArmTransX,defArmTransY,defArmTransZ);//移動
-            glRotatef(mRotateMatrix2, 1.0f, 1.0f, 0.0f);//回転
-            //glTranslatef( mTotalMotionTranslation.x/10.0,mTotalMotionTranslation.y/10.0,0.0f);//移動
-            glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
-        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100,  50, 50 ) );//実体
-        gl::popMatrices();
-        
-        //左腕を描く
-        gl::pushMatrices();
-            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defLeftArmTransX,defArmTransY,defArmTransZ);//移動
-            glRotatef(-mRotateMatrix4, -1.0f, 1.0f, 0.0f);//回転
-            //glTranslatef(10.0,10.0,0.0f);//移動
-            glScalef( mTotalMotionScale/2, mTotalMotionScale/4, mTotalMotionScale/2 );//大きさ
-        gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 50, 50 ) );//実体
-        gl::popMatrices();
-        
-        //右足を描く
-        gl::pushMatrices();
-            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defBodyTransX+25,defBodyTransY+75,defBodyTransZ);//移動
-            glRotatef(mRotateMatrix0, 1.0f, 0.0f, 0.0f);//回転
-            glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
-            gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
-        gl::popMatrices();
-        
-        //左足を描く
-        gl::pushMatrices();
-            setDiffuseColor( ci::ColorA( 0.7f, 0.7f, 0.7f, 1.0f ) );
-            glTranslatef(defBodyTransX-25,defBodyTransY+75,defBodyTransZ);//移動
-            glRotatef(mRotateMatrix5, 1.0f, 0.0f, 0.0f);//回転
-            glScalef( mTotalMotionScale/4, mTotalMotionScale/2, mTotalMotionScale/2 );//大きさ
-            gl::drawColorCube( Vec3f( 0,0,0 ), Vec3f( 100, 100, 100 ) );//実体
-        gl::popMatrices();
-        
-    }
-    //マリオネット
     void drawObjFile(){
-        
         glDisable( GL_CULL_FACE );//ポリゴンの表面だけを描く
-        
+        // 描画時に奥行きの考慮を有効にする
+        gl::enableDepthRead();
+        gl::enableDepthWrite();
         gl::pushMatrices();
         objTexture.bind();
-        gl::translate(Vec3f(defFaceTransX,defFaceTransY,defFaceTransZ));
-        gl::draw( mHead );
-        gl::popMatrices();
-        
-        gl::pushMatrices();
-        objTexture.bind();
-        gl::translate(Vec3f(defRightArmTransX,defArmTransY,defArmTransZ));
-        gl::draw( mArm2 );
-        gl::popMatrices();gl::pushMatrices();
-
-        gl::pushMatrices();
-        objTexture.bind();
-        gl::translate(Vec3f(defRightArmTransX,defArmTransY,defArmTransZ));
-        gl::draw( mArm1 );
-        gl::popMatrices();gl::pushMatrices();
-
-        gl::pushMatrices();
-        objTexture.bind();
-        gl::translate(Vec3f(defRightArmTransX,defArmTransY,defArmTransZ));
-        gl::draw( mHand );
-        gl::popMatrices();
-        
-        gl::pushMatrices();
-        objTexture.bind();
-        gl::translate(Vec3f(defLeftArmTransX,defArmTransY,defArmTransZ));
-        gl::draw( mLeftArm2 );
-        gl::popMatrices();
-        
-        gl::pushMatrices();
-        gl::translate(Vec3f(defLeftArmTransX,defArmTransY,defArmTransZ));
-        gl::draw( mLeftArm1 );
-        gl::popMatrices();
-        
-        gl::pushMatrices();
-        objTexture.bind();
-        gl::translate(Vec3f(defLeftArmTransX,defArmTransY,defArmTransZ));
-        gl::draw( mLeftHand );
-        gl::popMatrices();
-        
-        objTexture.bind();
-        gl::translate(Vec3f(defBodyTransX,defBodyTransY,defBodyTransZ));
-        gl::draw( mBody );
-        gl::popMatrices();
-        
-        gl::pushMatrices();
-        objTexture.bind();
-        gl::translate(Vec3f(defBodyTransX,defBodyTransY,defBodyTransZ));
-        gl::draw( mFoot );
+        gl::translate(Vec3f(200,800,0));
+        gl::rotate(Vec3f(180,0,0));
+        gl::scale(Vec3f(0.5, 0.5, 0.5));
+        gl::draw( mMesh );
         gl::popMatrices();
     }
     
@@ -508,87 +399,20 @@ public:
 //        if (R * 10 > 400) R = 10;//テスト用
         if (rad * 10 > 400) rad = 400;
         gl::popMatrices();
-        setDiffuseColor( ci::ColorA( 0.8, 0.8, 0.8 ) );
+        setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
     }
 
     //メッセージリスト
     void drawListArea(){
+        setDiffuseColor( ci::ColorA(0.83, 0.62, 0.53));
         for(int i = 0; i < 9; i++){
             gl::pushMatrices();
             gl::drawString(messageList[i],Vec2f(992.5, 145 + (70 * i)), ci::ColorA(0.83, 0.62, 0.53), mFont);
-            setDiffuseColor( ci::ColorA(0.83, 0.62, 0.53));
             gl::translate(Vec2f(980, 145 + (70 * i)));
             drawCircle3();
-            setDiffuseColor( ci::ColorA( 0.8, 0.8, 0.8 ) );
             gl::popMatrices();
         }
-/*
-        
-        //"大きな声で"描写
-        gl::pushMatrices();
-        gl::drawString(messageList[0],Vec2f(992.5, 145), ci::ColorA(0.83, 0.62, 0.53), mFont);
-        setDiffuseColor( ci::ColorA(0.83, 0.62, 0.53));
-        gl::translate(Vec2f(980, 145));
-        drawCircle3();
         setDiffuseColor( ci::ColorA( 0.8, 0.8, 0.8 ) );
-        gl::popMatrices();
-        
-        //"頑張れ"描写
-        gl::pushMatrices();
-        gl::drawString(messageList[1],Vec2f(992.5, 215), mFontColor, mFont);
-        gl::translate(Vec2f(980, 215));
-        drawCircle3();
-        gl::popMatrices();
-        
-        //"もう一度説明して"描写
-        gl::pushMatrices();
-        gl::drawString(messageList[2],Vec2f(992.5, 285), mFontColor, mFont);
-        gl::translate(Vec2f(980, 285));
-        drawCircle3();
-        gl::popMatrices();
-        
-        //"面白い"描写
-        gl::pushMatrices();
-        gl::drawString(messageList[3],Vec2f(992.5, 355), mFontColor, mFont);
-        gl::translate(Vec2f(980, 355));
-        drawCircle3();
-        gl::popMatrices();
-        
-        //"トイレにいきたい"描写
-        gl::pushMatrices();
-        gl::drawString(messageList[4],Vec2f(992.5, 425), mFontColor, mFont);
-        gl::translate(Vec2f(980, 425));
-        drawCircle3();
-        gl::popMatrices();
-        
-        //"わかった"描写
-        gl::pushMatrices();
-        gl::drawString(messageList[5],Vec2f(992.5, 495), mFontColor, mFont);
-        gl::translate(Vec2f(980, 495));
-        drawCircle3();
-        gl::popMatrices();
-        
-        //"かっこいい"描写
-        gl::pushMatrices();
-        gl::drawString(messageList[6],Vec2f(992.5, 565), mFontColor, mFont);
-        gl::translate(Vec2f(980, 565));
-        drawCircle3();
-        gl::popMatrices();
-        
-        //"速い!"描写
-        gl::pushMatrices();
-        gl::drawString(messageList[7],Vec2f(992.5, 635), mFontColor, mFont);
-        gl::translate(Vec2f(980, 635));
-        drawCircle3();
-        gl::popMatrices();
-        
-        //"わからない"描写
-        gl::pushMatrices();
-        gl::drawString(messageList[8],Vec2f(992.5, 705), mFontColor, mFont);
-        gl::translate(Vec2f(980, 705));
-        drawCircle3();
-        gl::popMatrices();
- */
     }
     
     //説明用の円
@@ -604,7 +428,7 @@ public:
     void drawBox(){
         setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
         gl::drawStrokedRoundedRect(Rectf(0,0,270,50), 5);//角の丸い四角
-        setDiffuseColor( ci::ColorA( 0.8, 0.8, 0.8 ) );
+        setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
     }
     
     void drawAccessNumber(){
