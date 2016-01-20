@@ -252,25 +252,22 @@ public:
         //アップデートごとに一度、メインスレッド上でノードから振幅スペクトルをコピーします。
         mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
         
-        
-        graphUpdate();
-        
-        
     }
     
     //描写処理
     void draw(){
         gl::clear();
-        //drawBackgroundColor();
         //"title"描写
         gl::pushMatrices();
         gl::drawString("Server Program", Vec2f(100,50),mFontColor, mFont);
         gl::popMatrices();
         gl::pushMatrices();
             drawListArea();//メッセージリストの表示
+            drawChangeCircleColor();
             drawCircle();//サークルで表示
             drawCircle2();//サークルで表示
             drawHelp();
+            setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
             //drawAudioAnalyze();//音声解析の描写
             drawAccessNumber();
         gl::popMatrices();
@@ -284,28 +281,28 @@ public:
         }
     }
     //背景色を変える
-    void drawBackgroundColor(){
+    void drawChangeCircleColor(){
         int largeMessageNumber = countMessageNumber();//一番多かったメッセージ番号を取ってくる
         if(largeMessageNumber == 1){
-            glClearColor(1.0f, 0.0f, 0.0f, 1.0f);//赤
+            setDiffuseColor( ci::ColorA(1.0f, 0.0f, 0.0f, 1.0f));//赤
         }else if(largeMessageNumber == 2){
-            glClearColor(0.0f, 1.0f, 0.0f, 1.0f);//青
+            setDiffuseColor( ci::ColorA(0.0f, 1.0f, 0.0f, 1.0f));//青
         }else if(largeMessageNumber == 3){
-            glClearColor(0.0f, 0.0f, 1.0f, 1.0f);//緑
+            setDiffuseColor( ci::ColorA(0.0f, 0.0f, 1.0f, 1.0f));//緑
         }else if(largeMessageNumber == 4){
-            glClearColor(1.0f, 1.0f, 0.0f, 1.0f);//黄
+            setDiffuseColor( ci::ColorA(1.0f, 1.0f, 0.0f, 1.0f));//黄
         }else if(largeMessageNumber == 5){
-            glClearColor(0.0f, 1.0f, 1.0f, 1.0f);//黄緑？
+            setDiffuseColor( ci::ColorA(0.0f, 1.0f, 1.0f, 1.0f));//黄緑？
         }else if(largeMessageNumber == 6){
-            glClearColor(1.0f, 0.0f, 1.0f, 1.0f);//紫
+            setDiffuseColor( ci::ColorA(1.0f, 0.0f, 1.0f, 1.0f));//紫
         }else if(largeMessageNumber == 7){
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            setDiffuseColor( ci::ColorA(0.0f, 0.0f, 0.0f, 1.0f));
         }else if(largeMessageNumber == 8){
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            setDiffuseColor( ci::ColorA(1.0f, 1.0f, 1.0f, 1.0f));
         }else if(largeMessageNumber == 9){
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            setDiffuseColor( ci::ColorA(0.5f, 0.5f, 0.5f, 1.0f));
         }else{
-        
+            setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
         }
 
     }
@@ -330,7 +327,6 @@ public:
         rad = (R + handRadius);
         //ScreenTapの回数によって大きくなる円の描写
         gl::pushMatrices();
-        setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
         gl::drawString("ScreenTapの回数によって大きくなる円の値：handRadius："+toString(handRadius), Vec2d( 100, 820));
         gl::drawSolidCircle(Vec2d( 360, WindowHeight/2 ), rad * 8);//ジェスチャーによって円の半径が変わる
         gl::popMatrices();
@@ -347,7 +343,6 @@ public:
         circleSpeed = angle + handSpeed;
         //float theta = angle * PI /180;  //thetaは角度（angle）をラディアン値に直したもの
         float theta = circleSpeed * PI /180;  //thetaは角度（handSpeed）をラディアン値に直したもの
-        setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
         gl::pushMatrices();
         gl::drawString("この値はCircleジェスチャーによって移動する円の値：R："+toString(R), Vec2d( 700, 820));
         //円を描く
@@ -369,7 +364,6 @@ public:
 //        printf("Circle2のhandRadiusの値：%d\n", handRadius);
 //        printf("Circle2のradの値：%d\n", rad);
 //        printf("handSpeedの値：%d\n", handSpeed);
-        setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
     }
 
     //メッセージリスト
@@ -382,7 +376,7 @@ public:
             drawCircle3();
             gl::popMatrices();
         }
-        setDiffuseColor( ci::ColorA( 0.8, 0.8, 0.8 ) );
+        //setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
     }
     
     //説明用の円
@@ -449,23 +443,6 @@ public:
         gl::drawString("タップ数", Vec2f(360 + rad * 8, 540));
         gl::popMatrices();
     
-    }
-    
-    void graphUpdate(){
-        //時間が１秒経つごとに座標を配列に記録していく
-        if (time(&next) != last){
-            last = next;
-            pastSec++;
-//            printf("%d 秒経過\n", pastSec);
-            point[pastSec][0]=pastSec;
-            point[pastSec][1]=handCount;
-            
-//            std::cout << "graphUpdate関数"<<"\n"
-//            << "秒数：" << pastSec << "\n"
-//            << "手の数：" << handCount << "\n"
-//            << std::endl;
-            
-        }
     }
     
     //音声解析の描写
