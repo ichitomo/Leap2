@@ -275,7 +275,7 @@ public:
         //アクセス数に応じてマリオネットを表示
         for(int i = 0; i < sumOfFrag(); i++){
             gl::pushMatrices();
-            translate(Vec2d(i*50,0));
+            translate(Vec2d(i*100,0));
             drawObjFile();
             gl::popMatrices();
         }
@@ -286,21 +286,21 @@ public:
         if(largeMessageNumber == 0){
             setDiffuseColor( ci::ColorA(1.0f, 0.0f, 0.0f, 1.0f));//赤
         }else if(largeMessageNumber == 1){
-            setDiffuseColor( ci::ColorA(0.0f, 1.0f, 0.0f, 1.0f));//青
+            setDiffuseColor( ci::ColorA(0.0f, 1.0f, 0.0f, 1.0f));//緑
         }else if(largeMessageNumber == 2){
-            setDiffuseColor( ci::ColorA(0.0f, 0.0f, 1.0f, 1.0f));//緑
+            setDiffuseColor( ci::ColorA(0.1f, 0.0f, 0.85f, 1.0f));//青
         }else if(largeMessageNumber == 3){
             setDiffuseColor( ci::ColorA(1.0f, 1.0f, 0.0f, 1.0f));//黄
         }else if(largeMessageNumber == 4){
-            setDiffuseColor( ci::ColorA(0.0f, 1.0f, 1.0f, 1.0f));//黄緑？
+            setDiffuseColor( ci::ColorA(0.0f, 1.0f, 1.0f, 1.0f));//水色？
         }else if(largeMessageNumber == 5){
             setDiffuseColor( ci::ColorA(1.0f, 0.0f, 1.0f, 1.0f));//紫
         }else if(largeMessageNumber == 6){
-            setDiffuseColor( ci::ColorA(0.2f, 0.2f, 0.2f, 1.0f));
+            setDiffuseColor( ci::ColorA(0.53f, 0.0f, 0.85f, 1.0f));
         }else if(largeMessageNumber == 7){
-            setDiffuseColor( ci::ColorA(0.7f, 0.7f, 0.7f, 0.7f));
-        }else if(largeMessageNumber == 8){
             setDiffuseColor( ci::ColorA(0.5f, 0.5f, 0.5f, 1.0f));
+        }else if(largeMessageNumber == 8){
+            setDiffuseColor( ci::ColorA(1.0f, 1.0f, 1.0f, 1.0f));
         }else{
             setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
         }
@@ -374,9 +374,9 @@ public:
             if(i == 0){
                 setDiffuseColor( ci::ColorA(1.0f, 0.0f, 0.0f, 1.0f));//赤
             }else if(i == 1){
-                setDiffuseColor( ci::ColorA(0.0f, 1.0f, 0.0f, 1.0f));//青
+                setDiffuseColor( ci::ColorA(0.0f, 1.0f, 0.0f, 1.0f));//緑
             }else if(i == 2){
-                setDiffuseColor( ci::ColorA(0.0f, 0.0f, 1.0f, 1.0f));//緑
+                setDiffuseColor( ci::ColorA(0.1f, 0.0f, 0.85f, 1.0f));//青
             }else if(i == 3){
                 setDiffuseColor( ci::ColorA(1.0f, 1.0f, 0.0f, 1.0f));//黄
             }else if(i == 4){
@@ -384,11 +384,11 @@ public:
             }else if(i == 5){
                 setDiffuseColor( ci::ColorA(1.0f, 0.0f, 1.0f, 1.0f));//紫
             }else if(i == 6){
-                setDiffuseColor( ci::ColorA(0.2f, 0.2f, 0.2f, 1.0f));
+                setDiffuseColor( ci::ColorA(0.53f, 0.0f, 0.85f, 1.0f));
             }else if(i == 7){
-                setDiffuseColor( ci::ColorA(0.7f, 0.7f, 0.7f, 0.7f));
-            }else if(i == 8){
                 setDiffuseColor( ci::ColorA(0.5f, 0.5f, 0.5f, 1.0f));
+            }else if(i == 8){
+                setDiffuseColor( ci::ColorA(1.0f, 1.0f, 1.0f, 1.0f));
             }else{
                 setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
             }
