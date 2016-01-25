@@ -596,9 +596,9 @@ void socketSv(){
     accountNumber = atoi(strtok(buffer2, ",")/*クライアントの番号*/);//int型に変換
     
     msgInfo = createMessage(buffer); //受け取ったメッセージを構造体の配列に記録
-    if (msgInfo.count[4] == -1) {
-        //msgInfo構造体count[4]の値（メッセージの番号）が-1のときはなにもしない
-    }else {
+    if (msgInfo.count[6] == -1) {
+        //msgInfo構造体count[6]の値（メッセージの番号）が-1のときはなにもしない
+    }else if((msgInfo.count[2] > 1 )||(msgInfo.count[3] > 1)||(msgInfo.count[4] > 1)||(msgInfo.count[5] > 1)){
         allMessage[accountNumber] = msgInfo;//それ以外のときはallMessageに記録
         countMessageNumber();
         debag(accountNumber);//記録したものをデバッグする
@@ -669,6 +669,10 @@ int sumJes1(){
     int jes1 = 0;
     for (int i = 0; i < 6 ; i++) {
         if (allMessage[i].flag == 1) {
+            //ジェスチャーが選択されていないときは0を入れる
+            if (allMessage[i].count[2] == -1) {
+                allMessage[i].count[2] = 0;
+            }
             jes1 = jes1 + allMessage[i].count[2];
         }
     }
@@ -681,6 +685,10 @@ int sumJes2(){
     int jes2 = 0;
     for (int i = 0; i < 6 ; i++) {
         if (allMessage[i].flag == 1) {
+            //ジェスチャーが選択されていないときは0を入れる
+            if (allMessage[i].count[3] == -1) {
+                allMessage[i].count[3] = 0;
+            }
             jes2 = jes2 + allMessage[i].count[3];
         }
     }
@@ -691,6 +699,10 @@ int sumJes3(){
     int jes3 = 0;
     for (int i = 0; i < 6 ; i++) {
         if (allMessage[i].flag == 1) {
+            //ジェスチャーが選択されていないときは0を入れる
+            if (allMessage[i].count[4] == -1) {
+                allMessage[i].count[4] = 0;
+            }
             jes3 = jes3 + allMessage[i].count[4];
         }
     }
@@ -701,6 +713,10 @@ int sumJes4(){
     int jes4 = 0;
     for (int i = 0; i < 6 ; i++) {
         if (allMessage[i].flag == 1) {
+            //ジェスチャーが選択されていないときは0を入れる
+            if (allMessage[i].count[5] == -1) {
+                allMessage[i].count[5] = 0;
+            }
             jes4 = jes4 + allMessage[i].count[5];
         }
     }
