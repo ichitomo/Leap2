@@ -72,9 +72,11 @@ struct sockaddr_in serv_addr, cli_addr;
 int sockaddr_in_size = sizeof(struct sockaddr_in);
 int l;//messageの判定に使う
 char *account, *hans, *jes1, *jes2, *message;//受け取ったbufferの中のものを分解するときに使う
-int handCount=0;//手の数をカウントしたときのカウント
-int tapCount=0;//ジェスチャーしたときのカウント
-int cirCount=0;//サークルしたときのカウント数
+int handCount = 0;//手の数をカウントしたときのカウント
+int ktapCount = 0;//ジェスチャーしたときのカウント
+int cirCount = 0;//サークルしたときのカウント数
+int stapCount = 0;
+int swipeCOunt = 0;
 int messageNumber;//受け取ったメッセージの番号
 int accountNumber;//受け取ったbufferの中のアカウントナンバー(int型)
 
@@ -95,7 +97,7 @@ std::vector<string> saveMessage;
 typedef struct{
     time_t time;
     int flag = 0;
-    int count[5];
+    int count[7];
     char msg[256];
 } messageInfo;
 messageInfo allMessage[6];
@@ -127,6 +129,8 @@ void debag(int number);
 int sumHands();
 int sumJes1();
 int sumJes2();
+int sumJes3();
+int sumJes4();
 int countMessageNumber();
 
 
@@ -215,8 +219,6 @@ public:
     // マウスのクリック
     void mouseDown( MouseEvent event ){
         mMayaCam.mouseDown( event.getPos() );
-//        if( mSpectrumPlot.getBounds().contains( event.getPos() ) )
-//            drawPrintBinInfo( event.getX() );
     }
     
     // マウスのドラッグ
@@ -245,13 +247,6 @@ public:
         // フレームの更新
         mLastFrame = mCurrentFrame;
         mCurrentFrame = mLeap.frame();
-        
-        //音声解析のアップデート処理
-        mSpectrumPlot.setBounds( Rectf( 40, 40, (float)getWindowWidth() - 40, (float)getWindowHeight() - 40 ) );
-        
-        //アップデートごとに一度、メインスレッド上でノードから振幅スペクトルをコピーします。
-        mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
-        
     }
     
     //描写処理
@@ -268,7 +263,6 @@ public:
             drawCircle2();//サークルで表示
             drawHelp();
             setDiffuseColor( ci::ColorA(0.65, 0.83, 0.58));
-            //drawAudioAnalyze();//音声解析の描写
             drawAccessNumber();
         gl::popMatrices();
 
@@ -323,47 +317,33 @@ public:
     
     //ScreenTapの回数によって大きくなる円の描写
     void drawCircle(){
-        handRadius = sumJes2();//スクリーンタップジェスチャーの回数
+        handRadius = sumJes3() + sumJes4();//スクリーンタップジェスチャーの回数
         rad = (R + handRadius);
         //ScreenTapの回数によって大きくなる円の描写
         gl::pushMatrices();
-        //gl::drawString("ScreenTapの回数によって大きくなる円の値：handRadius："+toString(handRadius), Vec2d( 100, 820));
         gl::drawSolidCircle(Vec2d( 360, WindowHeight/2 ), rad * 8);//ジェスチャーによって円の半径が変わる
         gl::popMatrices();
-//        printf("handRadiusの値：%d\n", handRadius);
-//        printf("radの値：%d\n", rad);
 
     }
     //Circleジェスチャーによって移動する円の描写
     void drawCircle2(){
         //円の周回運動
-        handSpeed = sumJes1();//サークルジェスチャーの回数
-        handRadius = sumJes2();//スクリーンタップジェスチャーの回数
+        handSpeed = sumJes1()+ sumJes2();//サークルジェスチャーの回数
+        handRadius = sumJes3() + sumJes4();//タップジェスチャーの回数
         rad = (R + handRadius);
         circleSpeed = angle + handSpeed;
         //float theta = angle * PI /180;  //thetaは角度（angle）をラディアン値に直したもの
         float theta = circleSpeed * PI /180;  //thetaは角度（handSpeed）をラディアン値に直したもの
         gl::pushMatrices();
-        //gl::drawString("この値はCircleジェスチャーによって移動する円の値：R："+toString(R), Vec2d( 700, 820));
-        //円を描く
-        //gl::drawStrokedCircle(Vec2d( 360, WindowHeight/2 ), R * 20);//ジェスチャーによって円の半径が変わる//テスト用
         gl::drawStrokedCircle(Vec2d( 360, WindowHeight/2 ), rad * 10);//ジェスチャーによって円の半径が変わる
         //円の周りを動く円のアニメーション
-//        posX = R * 20 * cos(theta);//テスト用
-//        posY = -R * 20 * sin(theta);//テスト用
         posX = rad * 10 * cos(theta);
         posY = -rad * 10 * sin(theta);
         gl::drawSolidCircle(Vec2d( posX + 360, posY + WindowHeight/2 ), 10);
         angle ++;//テスト用
-        //R = R + 1;//テスト用
-//        if (angle >= 360) angle = 0;  //もしangleが360以上になったら0にする。//テスト用
         if (circleSpeed >= 360) circleSpeed = 0;  //もしangleが360以上になったら0にする。
-//        if (R * 10 > 400) R = 10;//テスト用
         if (rad * 10 > 400) rad = 400;
         gl::popMatrices();
-//        printf("Circle2のhandRadiusの値：%d\n", handRadius);
-//        printf("Circle2のradの値：%d\n", rad);
-//        printf("handSpeedの値：%d\n", handSpeed);
     }
 
     //メッセージリスト
@@ -416,13 +396,16 @@ public:
         int h = sumHands();
         int j1 = sumJes1();
         int j2 = sumJes2();
+        int j3 = sumJes3();
+        int j4 = sumJes4();
         int cmn = countMessageNumber();
         printf("countMessageNumberの値：%d\n", cmn);
         gl::drawString("トータルアクセス数：" + to_string(sumOfFrag()), Vec2d(400,820));
         gl::drawString("一番多いメッセージナンバー：" + to_string(cmn), Vec2d(600,820));
         gl::drawString("手の数：" + to_string(h), Vec2d(850,820));
         gl::drawString("サークル数：" + to_string(j1), Vec2d(1000,820));
-        gl::drawString("タップ数：" + to_string(j2), Vec2d(1200,820));
+        gl::drawString("スワイプ数：" + to_string(j2), Vec2d(1100,820));
+        gl::drawString("タップ数：" + to_string(j3+j4), Vec2d(1200,820));
     }
     
     void drawHelp(){
@@ -450,9 +433,9 @@ public:
         gl::popMatrices();
         //曲点から端まで
         gl::pushMatrices();
-        gl::drawLine(Vec2f(rad * 10 + 360 + 50, 500), Vec2f(rad * 10 + 360 + 110, 500));
+        gl::drawLine(Vec2f(rad * 10 + 360 + 50, 500), Vec2f(rad * 10 + 360 + 170, 500));
         gl::drawSolidCircle(Vec2f(rad * 10 + 360 + 110, 500), 5);
-        gl::drawString("サークル", Vec2f(rad * 10 + 360 + 50, 480));
+        gl::drawString("サークル数+スワイプ数", Vec2f(rad * 10 + 360 + 50, 480));
         gl::popMatrices();
         
         ////円の周回運動から半径のHelp
@@ -462,52 +445,12 @@ public:
         gl::popMatrices();
         //曲点から端まで
         gl::pushMatrices();
-        gl::drawLine(Vec2f(360 + rad * 8, 560), Vec2f(360 + 60 + rad * 8, 560));
+        gl::drawLine(Vec2f(360 + rad * 8, 560), Vec2f(360 + 120 + rad * 8, 560));
         gl::drawSolidCircle(Vec2f(360 + 60 + rad * 8, 560), 5);
         gl::drawString("タップ数", Vec2f(360 + rad * 8, 540));
         gl::popMatrices();
     
     }
-    
-    //音声解析の描写
-    void drawAudioAnalyze(){
-        glPushMatrix();
-        glScalef(0.5, 0.5, 0);
-        mSpectrumPlot.draw( mMagSpectrum );
-        drawLabels();
-        glPopMatrix();
-    }
-    
-    //音声解析のラベルの描写
-    void drawLabels(){
-        if( ! mTextureFont )
-            mTextureFont = gl::TextureFont::create( Font( Font::getDefault().getName(), 16 ) );
-        gl::color( 0, 0.9f, 0.9f );
-        
-        // x座標のラベル
-        string freqLabel = "Frequency (hertz)";
-        mTextureFont->drawString( freqLabel, Vec2f( getWindowCenter().x - mTextureFont->measureString( freqLabel ).x / 2, (float)getWindowHeight() - 20 ) );
-        
-        // y座標のラベル
-        string dbLabel = "Magnitude (decibels, linear)";
-        gl::pushModelView();
-        gl::translate( 30, getWindowCenter().y + mTextureFont->measureString( dbLabel ).x / 2 );
-        gl::rotate( -90 );
-        mTextureFont->drawString( dbLabel, Vec2f::zero() );
-        gl::popModelView();
-    }
-    void drawPrintBinInfo( int mouseX ){
-        size_t numBins = mMonitorSpectralNode->getFftSize() / 2;
-        size_t bin = min( numBins - 1, size_t( ( numBins * ( mouseX - mSpectrumPlot.getBounds().x1 ) ) / mSpectrumPlot.getBounds().getWidth() ) );
-        
-//        float binFreqWidth = mMonitorSpectralNode->getFreqForBin( 1 ) - mMonitorSpectralNode->getFreqForBin( 0 );
-//        float freq = mMonitorSpectralNode->getFreqForBin( bin );
-//        float mag = cinder::audio::linearToDecibel( mMagSpectrum[bin] );
-//        
-//        console() << "bin: " << bin << ", freqency (hertz): " << freq << " - " << freq + binFreqWidth << ", magnitude (decibels): " << mag << endl;
-        
-    }
-    
     void setDiffuseColor( ci::ColorA diffuseColor ){
         gl::color( diffuseColor );
         glMaterialfv( GL_FRONT, GL_DIFFUSE, diffuseColor );
@@ -722,6 +665,7 @@ int sumHands(){
 
 //送られてきたジェスチャーの数を集計して、合計した値を返す関数
 int sumJes1(){
+    //circleを集計する
     int jes1 = 0;
     for (int i = 0; i < 6 ; i++) {
         if (allMessage[i].flag == 1) {
@@ -733,6 +677,7 @@ int sumJes1(){
 
 //送られてきたジェスチャーの数を集計して、合計した値を返す関数
 int sumJes2(){
+    //スワイプを集計する
     int jes2 = 0;
     for (int i = 0; i < 6 ; i++) {
         if (allMessage[i].flag == 1) {
@@ -740,6 +685,26 @@ int sumJes2(){
         }
     }
     return jes2;
+}
+int sumJes3(){
+    //スクリーンタップを集計する
+    int jes3 = 0;
+    for (int i = 0; i < 6 ; i++) {
+        if (allMessage[i].flag == 1) {
+            jes3 = jes3 + allMessage[i].count[4];
+        }
+    }
+    return jes3;
+}
+int sumJes4(){
+    //キータップジェスチャーを集計する
+    int jes4 = 0;
+    for (int i = 0; i < 6 ; i++) {
+        if (allMessage[i].flag == 1) {
+            jes4 = jes4 + allMessage[i].count[5];
+        }
+    }
+    return jes4;
 }
 
 
@@ -752,39 +717,39 @@ int countMessageNumber(){
     
     for (int i = 0; i < 6; i++) {
         if (allMessage[i].flag == 1) {
-            if (allMessage[i].count[4]== 0) {
+            if (allMessage[i].count[6]== 0) {
                 mcount++;
                 sumMessageNumber[0] = mcount;
             }
-            else if (allMessage[i].count[4]== 1) {
+            else if (allMessage[i].count[6]== 1) {
                 mcount2++;
                 sumMessageNumber[1] = mcount2;
             }
-            else if (allMessage[i].count[4]== 2) {
+            else if (allMessage[i].count[6]== 2) {
                 mcount3++;
                 sumMessageNumber[2] = mcount3;
             }
-            else if (allMessage[i].count[4]== 3 ) {
+            else if (allMessage[i].count[6]== 3 ) {
                 mcount4++;
                 sumMessageNumber[3] = mcount4;
             }
-            else if (allMessage[i].count[4]== 4) {
+            else if (allMessage[i].count[6]== 4) {
                 mcount5++;
                 sumMessageNumber[4] = mcount5;
             }
-            else if (allMessage[i].count[4]== 5 ) {
+            else if (allMessage[i].count[6]== 5 ) {
                 mcount6++;
                 sumMessageNumber[5] = mcount6;
             }
-            else if (allMessage[i].count[4]== 6) {
+            else if (allMessage[i].count[6]== 6) {
                 mcount7++;
                 sumMessageNumber[6] = mcount7;
             }
-            else if (allMessage[i].count[4]== 7) {
+            else if (allMessage[i].count[6]== 7) {
                 mcount8++;
                 sumMessageNumber[7] = mcount8;
             }
-            else if (allMessage[i].count[4]== 8 ) {
+            else if (allMessage[i].count[6]== 8 ) {
                 mcount9++;
                 sumMessageNumber[8] = mcount9;
             }else{
