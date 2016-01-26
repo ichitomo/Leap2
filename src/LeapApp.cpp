@@ -132,6 +132,7 @@ int sumJes2();
 int sumJes3();
 int sumJes4();
 int countMessageNumber();
+void leapLog(int number);
 
 
 class LeapApp : public AppNative {
@@ -434,7 +435,7 @@ public:
         //曲点から端まで
         gl::pushMatrices();
         gl::drawLine(Vec2f(rad * 10 + 360 + 50, 500), Vec2f(rad * 10 + 360 + 170, 500));
-        gl::drawSolidCircle(Vec2f(rad * 10 + 360 + 110, 500), 5);
+        gl::drawSolidCircle(Vec2f(rad * 10 + 360 + 170, 500), 5);
         gl::drawString("サークル数+スワイプ数", Vec2f(rad * 10 + 360 + 50, 480));
         gl::popMatrices();
         
@@ -446,7 +447,7 @@ public:
         //曲点から端まで
         gl::pushMatrices();
         gl::drawLine(Vec2f(360 + rad * 8, 560), Vec2f(360 + 120 + rad * 8, 560));
-        gl::drawSolidCircle(Vec2f(360 + 60 + rad * 8, 560), 5);
+        gl::drawSolidCircle(Vec2f(360 + 120 + rad * 8, 560), 5);
         gl::drawString("タップ数", Vec2f(360 + rad * 8, 540));
         gl::popMatrices();
     
@@ -587,7 +588,8 @@ void socketSv(){
     if (l < 0){
         error("ERROR reading from socket");
     }
-
+    
+    
     //受けとったものをプリント
     printf("受け取ったもの: %s\n",buffer);
     strcpy(buffer2, buffer);
@@ -598,9 +600,10 @@ void socketSv(){
     msgInfo = createMessage(buffer); //受け取ったメッセージを構造体の配列に記録
     if (msgInfo.count[6] == -1) {
         //msgInfo構造体count[6]の値（メッセージの番号）が-1のときはなにもしない
-    }else if((msgInfo.count[2] > 1 )||(msgInfo.count[3] > 1)||(msgInfo.count[4] > 1)||(msgInfo.count[5] > 1)){
+    }else if(((msgInfo.count[2] > 1 )||(msgInfo.count[3] > 1)||(msgInfo.count[4] > 1)||(msgInfo.count[5] > 1))&&(msgInfo.count[6] != -1)){
         allMessage[accountNumber] = msgInfo;//それ以外のときはallMessageに記録
         countMessageNumber();
+        leapLog(accountNumber);
         debag(accountNumber);//記録したものをデバッグする
     }
     
@@ -636,7 +639,7 @@ messageInfo createMessage(char *data){
     strcpy(m, data);
         
     msg.count[0] = atoi(strtok(m, ",")/*クライアントの番号*/);//int型に変換
-    for (int i = 1; i < 5; i++) {
+    for (int i = 1; i < 7; i++) {
        msg.count[i] = atoi(strtok(NULL, ","));
     }
     return msg;
@@ -793,6 +796,21 @@ int countMessageNumber(){
     
     printf("最大の番号：%d\n", resultNumber);
     return resultNumber;
+}
+
+void leapLog(int number){
+    FILE *outputfile;         // 出力ストリーム
+    
+    outputfile = fopen("../data.txt", "a");  // ファイルを書き込み用にオープン(開く)
+    if (outputfile == NULL) {          // オープンに失敗した場合
+        printf("cannot open\n");         // エラーメッセージを出して
+        exit(1);                         // 異常終了
+    }
+    fprintf(outputfile, "Time:%ld, circle:%d, swipe:%d, stap:%d, ktap:%d, message:%d .\n",
+                        allMessage[number].time, allMessage[number].count[2],allMessage[number].count[3], allMessage[number].count[4], allMessage[number].count[5],allMessage[number].count[6]); // ファイルに書く}
+
+    
+    fclose(outputfile);          // ファイルをクローズ(閉じる)
 }
 
 //構造体の中身を確認するための関数
