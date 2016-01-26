@@ -806,8 +806,8 @@ void leapLog(int number){
         printf("cannot open\n");         // エラーメッセージを出して
         exit(1);                         // 異常終了
     }
-    fprintf(outputfile, "Time:%ld, circle:%d, swipe:%d, stap:%d, ktap:%d, message:%d .\n",
-                        allMessage[number].time, allMessage[number].count[2],allMessage[number].count[3], allMessage[number].count[4], allMessage[number].count[5],allMessage[number].count[6]); // ファイルに書く}
+    fprintf(outputfile, "Time:%s, circle:%d, swipe:%d, stap:%d, ktap:%d, message:%d .\n",
+                        ctime(&allMessage[number].time), allMessage[number].count[2],allMessage[number].count[3], allMessage[number].count[4], allMessage[number].count[5],allMessage[number].count[6]); // ファイルに書く}
 
     
     fclose(outputfile);          // ファイルをクローズ(閉じる)
